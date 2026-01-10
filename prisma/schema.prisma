@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Ingredient {
+  id                String             @id @default(uuid())
+  name              String
+  unit              String
+  protein           Float // Macros per 100 units
+  carbs             Float
+  fat               Float
+  calories          Float
+  fiber             Float
+  purchaseUnitName  String
+  purchaseUnitAmount Float
+  
+  // Relations
+  usedInRecipes     RecipeIngredient[]
+  barcodes          Barcode[]
+}
+
+model Barcode {
+  code          String     @id
+  ingredientId  String
+  ingredient    Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+model Tool {
+  id        String     @id @default(uuid())
+  name      String     @unique
+  steps     StepTool[]
+}
+
+model Recipe {
+  id           String             @id @default(uuid())
+  name         String
+  method       String // Stored as JSON string
+  
+  // Relations
+  steps        RecipeStep[]
+  meals        Meal[]
+  templateMeals TemplateMeal[]
+}
+
+model RecipeStep {
+  id          String             @id @default(uuid())
+  recipeId    String
+  description String
+  sortOrder   Int                @default(0)
+  
+  recipe      Recipe             @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  
+  ingredients RecipeIngredient[]
+  tools       StepTool[]
+}
+
+model StepTool {
+  id        String     @id @default(uuid())
+  stepId    String
+  toolId    String
+  
+  step      RecipeStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  tool      Tool       @relation(fields: [toolId], references: [id], onDelete: Cascade)
+}
+
+model RecipeIngredient {
+  id           String     @id @default(uuid())
+  stepId       String
+  ingredientId String
+  amount       Float
+  
+  step         RecipeStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Restrict)
+}
+
+model DayPlan {
+  id    String @id @default(uuid())
+  date  String @unique // ISO Date string YYYY-MM-DD
+  meals Meal[]
+}
+
+model Meal {
+  id        String  @id @default(uuid())
+  planId    String
+  recipeId  String
+  servings  Int     @default(1)
+  sortOrder Int     @default(0) // To keep order of meals
+  slotName  String  @default("Meal") // e.g., "Breakfast", "Lunch"
+
+  plan      DayPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model Settings {
+  id              String @id @default("global")
+  calorieTarget   Int    @default(2000)
+  proteinTarget   Int    @default(150)
+  carbsTarget     Int    @default(200)
+  fatTarget       Int    @default(60)
+  fiberTarget     Int    @default(30)
+}
+
+model PlanTemplate {
+  id        String        @id @default(uuid())
+  name      String
+  isActive  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  days      TemplateDay[]
+}
+
+model TemplateDay {
+  id             String         @id @default(uuid())
+  planTemplateId String
+  name           String         // e.g. "High Carb Day"
+  sortOrder      Int            // 0, 1, 2... for ordering in the UI
+
+  // Macro Overrides (Optional - if null, use Global Settings)
+  targetCalories Int?
+  targetProtein  Int?
+  targetCarbs    Int?
+  targetFat      Int?
+  targetFiber    Int?
+
+  planTemplate   PlanTemplate   @relation(fields: [planTemplateId], references: [id], onDelete: Cascade)
+  meals          TemplateMeal[]
+}
+
+model TemplateMeal {
+  id            String      @id @default(uuid())
+  templateDayId String
+  recipeId      String
+  slotName      String      // e.g. "Breakfast"
+  sortOrder     Int         @default(0)
+  servings      Int         @default(1)
+
+  templateDay   TemplateDay @relation(fields: [templateDayId], references: [id], onDelete: Cascade)
+  recipe        Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
