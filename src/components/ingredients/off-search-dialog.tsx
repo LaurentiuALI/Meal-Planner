@@ -1,10 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { searchOpenFoodFacts, searchOpenFoodFactsByBarcode, type OFFProduct } from "@/actions/openfoodfacts"
+import { searchOpenFoodFactsByBarcode, type OFFProduct } from "@/actions/openfoodfacts"
+import { searchIngredientsUnified, type UnifiedSearchResult } from "@/actions/search-ingredients"
 import { useIngredientStore } from "@/store/useIngredientStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -26,7 +28,7 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
   const [showScanner, setShowScanner] = useState(false)
   const [query, setQuery] = useState("")
   const [loading, setLoading] = useState(false)
-  const [results, setResults] = useState<OFFProduct[]>([])
+  const [results, setResults] = useState<UnifiedSearchResult[]>([])
   const [unknownBarcode, setUnknownBarcode] = useState<string | null>(null)
   
   const { ingredients } = useIngredientStore()
@@ -37,7 +39,7 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
 
     setLoading(true)
     setUnknownBarcode(null)
-    const data = await searchOpenFoodFacts(query)
+    const data = await searchIngredientsUnified(query)
     setResults(data)
     setLoading(false)
   }
@@ -60,7 +62,22 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
     const data = await searchOpenFoodFactsByBarcode(code)
     
     if (data.length > 0) {
-        setResults(data)
+        // Map OFFProduct to UnifiedSearchResult
+        const mapped: UnifiedSearchResult[] = data.map(p => ({
+            source: 'OpenFoodFacts',
+            id: p.code || 'unknown',
+            name: p.product_name,
+            macros: {
+                calories: p.nutriments["energy-kcal_100g"] || 0,
+                protein: p.nutriments.proteins_100g || 0,
+                carbs: p.nutriments.carbohydrates_100g || 0,
+                fat: p.nutriments.fat_100g || 0,
+                fiber: p.nutriments.fiber_100g || 0
+            },
+            unit: 'g',
+            originalData: p
+        }))
+        setResults(mapped)
     } else {
         setResults([]) 
         setUnknownBarcode(code)
@@ -85,31 +102,27 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
      setQuery("")
   }
 
-  const handleSelect = (product: OFFProduct) => {
+  const handleSelect = (product: UnifiedSearchResult) => {
     // Try to parse purchase unit amount from quantity string (e.g. "500g")
+    // Only available for OFF original data for now
     let purchaseAmount = 100 // default
-    if (product.quantity) {
-      const match = product.quantity.match(/(\d+)/)
+    
+    if (product.source === 'OpenFoodFacts' && product.originalData.quantity) {
+      const match = product.originalData.quantity.match(/(\d+)/)
       if (match) {
         purchaseAmount = parseInt(match[0], 10)
       }
     }
 
     const ingredientData: Omit<Ingredient, "id"> = {
-      name: product.product_name,
-      unit: "g", // OFF standardizes on 100g
-      macros: {
-        calories: product.nutriments["energy-kcal_100g"] || 0,
-        protein: product.nutriments["proteins_100g"] || 0,
-        carbs: product.nutriments["carbohydrates_100g"] || 0,
-        fat: product.nutriments["fat_100g"] || 0,
-        fiber: product.nutriments["fiber_100g"] || 0,
-      },
+      name: product.name,
+      unit: product.unit, 
+      macros: product.macros,
       purchaseUnit: {
         name: "pack",
         amount: purchaseAmount,
       },
-      barcodes: product.code ? [product.code] : []
+      barcodes: product.source === 'OpenFoodFacts' && product.originalData.code ? [product.originalData.code] : []
     }
 
     onSelect(ingredientData)
@@ -127,9 +140,9 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Search Open Food Facts</DialogTitle>
+          <DialogTitle>Search Ingredients</DialogTitle>
           <DialogDescription>
-            Find ingredients and automatically import nutritional data.
+            Search OpenFoodFacts and Spoonacular for nutritional data.
           </DialogDescription>
         </DialogHeader>
 
@@ -170,7 +183,7 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
           {unknownBarcode && !loading && (
              <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">
-                    Barcode <strong>{unknownBarcode}</strong> not found in Open Food Facts.
+                    Barcode <strong>{unknownBarcode}</strong> not found.
                 </p>
                 <Button onClick={handleCreateCustom}>
                     <Plus className="mr-2 h-4 w-4" /> Create Custom Ingredient
@@ -185,15 +198,19 @@ export function OFFSearchDialog({ onSelect }: OFFSearchDialogProps) {
                 className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
               >
                 <div className="flex-1">
-                  <div className="font-medium">{product.product_name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {product.quantity || "Unknown size"} • 
-                    {product.nutriments["energy-kcal_100g"]} kcal/100g
+                  <div className="flex items-center gap-2">
+                      <span className="font-medium">{product.name}</span>
+                      <Badge variant={product.source === 'OpenFoodFacts' ? 'secondary' : 'outline'} className="text-[10px] h-5">
+                          {product.source}
+                      </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {product.macros.calories} kcal/100{product.unit}
                   </div>
                   <div className="text-xs text-muted-foreground flex gap-2 mt-1">
-                    <span>P: {Number(product.nutriments["proteins_100g"] ?? 0).toFixed(1)}g</span>
-                    <span>C: {Number(product.nutriments["carbohydrates_100g"] ?? 0).toFixed(1)}g</span>
-                    <span>F: {Number(product.nutriments["fat_100g"] ?? 0).toFixed(1)}g</span>
+                    <span>P: {Number(product.macros.protein).toFixed(1)}g</span>
+                    <span>C: {Number(product.macros.carbs).toFixed(1)}g</span>
+                    <span>F: {Number(product.macros.fat).toFixed(1)}g</span>
                   </div>
                 </div>
                 <Button size="sm" onClick={() => handleSelect(product)}>

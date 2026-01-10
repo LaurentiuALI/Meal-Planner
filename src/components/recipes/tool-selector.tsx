@@ -45,9 +45,11 @@ export function ToolSelector({ selectedIds, onChange }: ToolSelectorProps) {
 
   const handleCreate = async () => {
     if (!inputValue) return;
-    const newTool = await addTool(inputValue);
-    onChange([...selectedIds, newTool.id]);
+    const term = inputValue; // Capture current value
+    setOpen(false); // Close immediately for feedback
     setInputValue('');
+    const newTool = await addTool(term);
+    onChange([...selectedIds, newTool.id]);
   };
 
   const selectedTools = tools.filter((t) => selectedIds.includes(t.id));
@@ -70,28 +72,29 @@ export function ToolSelector({ selectedIds, onChange }: ToolSelectorProps) {
         </PopoverTrigger>
         <PopoverContent className="w-full p-0">
           <Command>
-            <CommandInput 
-                placeholder="Search or create tool..." 
-                value={inputValue}
-                onValueChange={setInputValue}
+            <CommandInput
+              placeholder="Search or create tool..."
+              value={inputValue}
+              onValueChange={setInputValue}
             />
             <CommandList>
-              <CommandEmpty>
-                 {inputValue && (
-                    <div className="p-2">
-                        <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleCreate}>
-                            <Plus className="mr-2 h-4 w-4" /> Create "{inputValue}"
-                        </Button>
-                    </div>
-                 )}
-                 {!inputValue && "No tools found."}
-              </CommandEmpty>
+              <CommandEmpty>No tools found.</CommandEmpty>
               <CommandGroup>
+                {inputValue && (
+                  <CommandItem
+                    value={`create-tool-${inputValue}`}
+                    onSelect={() => handleCreate()}
+                    className="font-semibold text-primary"
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Create "{inputValue}"
+                  </CommandItem>
+                )}
                 {tools.map((tool) => (
                   <CommandItem
                     key={tool.id}
                     value={tool.name}
                     onSelect={() => handleSelect(tool.id)}
+                    className="data-[disabled]:pointer-events-auto"
                   >
                     <Check
                       className={cn(
@@ -107,12 +110,12 @@ export function ToolSelector({ selectedIds, onChange }: ToolSelectorProps) {
           </Command>
         </PopoverContent>
       </Popover>
-      
+
       <div className="flex flex-wrap gap-1 min-h-[24px]">
         {selectedTools.map(tool => (
-            <Badge key={tool.id} variant="secondary" className="cursor-pointer" onClick={() => handleSelect(tool.id)}>
-                {tool.name} ×
-            </Badge>
+          <Badge key={tool.id} variant="secondary" className="cursor-pointer" onClick={() => handleSelect(tool.id)}>
+            {tool.name} ×
+          </Badge>
         ))}
       </div>
     </div>

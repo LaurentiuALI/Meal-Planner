@@ -24,6 +24,13 @@ import { searchOpenFoodFacts, searchOpenFoodFactsByBarcode, type OFFProduct } fr
 import { useIngredientStore } from "@/store/useIngredientStore"
 import { useDebounce } from "@/hooks/use-debounce"
 import { BarcodeScanner } from "@/components/ingredients/barcode-scanner"
+import { IngredientForm } from "@/components/ingredients/ingredient-form"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface SmartIngredientRowProps {
   ingredientId: string
@@ -69,6 +76,7 @@ export function SmartIngredientRow({
 }: SmartIngredientRowProps) {
   const [open, setOpen] = React.useState(false)
   const [showScanner, setShowScanner] = React.useState(false)
+  const [showCreateDialog, setShowCreateDialog] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState("")
   const [offResults, setOffResults] = React.useState<OFFProduct[]>([])
   const [isSearching, setIsSearching] = React.useState(false)
@@ -155,6 +163,30 @@ export function SmartIngredientRow({
 
   return (
     <>
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Create New Ingredient</DialogTitle>
+            </DialogHeader>
+            <IngredientForm 
+                initialData={{ 
+                  name: searchValue,
+                  unit: 'g',
+                  macros: { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 },
+                  purchaseUnit: { name: 'pack', amount: 100 },
+                  barcodes: []
+                }} 
+                onSuccess={(newIngredient) => {
+                    if (newIngredient) {
+                        onChange({ ingredientId: newIngredient.id })
+                    }
+                    setShowCreateDialog(false)
+                    resetSearch()
+                }} 
+            />
+        </DialogContent>
+      </Dialog>
+      
       {showScanner && (
         <BarcodeScanner 
           onScanSuccess={handleScan}
@@ -226,6 +258,22 @@ export function SmartIngredientRow({
                     ))}
                   </CommandGroup>
                   
+                  {searchValue && (
+                    <CommandGroup>
+                       <CommandItem 
+                         value={`create-custom-${searchValue}`}
+                         onSelect={() => {
+                           setOpen(false)
+                           setShowCreateDialog(true)
+                         }}
+                         className="cursor-pointer py-3 font-semibold text-primary data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
+                       >
+                         <PlusCircle className="mr-3 h-4 w-4" />
+                         Create "{searchValue}"
+                       </CommandItem>
+                    </CommandGroup>
+                  )}
+
                   {(debouncedSearch.length > 2 || offResults.length > 0 || isSearching) && (
                     <>
                       <CommandSeparator />

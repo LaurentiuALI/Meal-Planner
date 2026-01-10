@@ -11,7 +11,7 @@ import { BarcodeScanner } from "./barcode-scanner"
 
 interface IngredientFormProps {
   initialData?: Ingredient | Omit<Ingredient, "id">
-  onSuccess?: () => void
+  onSuccess?: (ingredient?: Ingredient) => void
 }
 
 export function IngredientForm({ initialData, onSuccess }: IngredientFormProps) {
@@ -34,7 +34,7 @@ export function IngredientForm({ initialData, onSuccess }: IngredientFormProps) 
   
   const [barcodeInput, setBarcodeInput] = useState("")
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const ingredientData = {
@@ -54,13 +54,15 @@ export function IngredientForm({ initialData, onSuccess }: IngredientFormProps) 
       barcodes: formData.barcodes,
     }
 
+    let resultIngredient: Ingredient | undefined;
+
     if (initialData && 'id' in initialData) {
-      updateIngredient(initialData.id, ingredientData)
+      await updateIngredient(initialData.id, ingredientData)
     } else {
-      addIngredient(ingredientData)
+      resultIngredient = await addIngredient(ingredientData)
     }
 
-    onSuccess?.()
+    onSuccess?.(resultIngredient)
   }
 
   const addBarcode = (code: string) => {
