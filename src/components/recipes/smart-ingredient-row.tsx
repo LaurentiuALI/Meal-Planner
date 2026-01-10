@@ -80,7 +80,7 @@ export function SmartIngredientRow({
   const [searchValue, setSearchValue] = React.useState("")
   const [offResults, setOffResults] = React.useState<OFFProduct[]>([])
   const [isSearching, setIsSearching] = React.useState(false)
-  
+
   const debouncedSearch = useDebounce(searchValue, 600)
   const { addIngredient } = useIngredientStore()
 
@@ -143,7 +143,7 @@ export function SmartIngredientRow({
 
   const handleScan = async (code: string) => {
     setShowScanner(false)
-    
+
     // 1. Check local
     const localMatch = allIngredients.find(i => i.barcodes?.includes(code))
     if (localMatch) {
@@ -165,30 +165,30 @@ export function SmartIngredientRow({
     <>
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Create New Ingredient</DialogTitle>
-            </DialogHeader>
-            <IngredientForm 
-                initialData={{ 
-                  name: searchValue,
-                  unit: 'g',
-                  macros: { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 },
-                  purchaseUnit: { name: 'pack', amount: 100 },
-                  barcodes: []
-                }} 
-                onSuccess={(newIngredient) => {
-                    if (newIngredient) {
-                        onChange({ ingredientId: newIngredient.id })
-                    }
-                    setShowCreateDialog(false)
-                    resetSearch()
-                }} 
-            />
+          <DialogHeader>
+            <DialogTitle>Create New Ingredient</DialogTitle>
+          </DialogHeader>
+          <IngredientForm
+            initialData={{
+              name: searchValue,
+              unit: 'g',
+              macros: { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 },
+              purchaseUnit: { name: 'pack', amount: 100 },
+              barcodes: []
+            }}
+            onSuccess={(newIngredient) => {
+              if (newIngredient) {
+                onChange({ ingredientId: newIngredient.id })
+              }
+              setShowCreateDialog(false)
+              // resetSearch()
+            }}
+          />
         </DialogContent>
       </Dialog>
-      
+
       {showScanner && (
-        <BarcodeScanner 
+        <BarcodeScanner
           onScanSuccess={handleScan}
           onClose={() => setShowScanner(false)}
         />
@@ -218,14 +218,14 @@ export function SmartIngredientRow({
                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent 
-              className="w-[85vw] sm:w-[400px] p-0" 
+            <PopoverContent
+              className="w-[85vw] sm:w-[400px] p-0"
               align="start"
               side="bottom"
             >
               <Command shouldFilter={false} className="max-h-[300px] sm:max-h-[400px]">
-                <CommandInput 
-                  placeholder="Search local or web..." 
+                <CommandInput
+                  placeholder="Search local or web..."
                   value={searchValue}
                   onValueChange={setSearchValue}
                   className="h-12 text-base"
@@ -235,42 +235,42 @@ export function SmartIngredientRow({
                     {allIngredients
                       .filter(i => i.name.toLowerCase().includes(searchValue.toLowerCase()))
                       .map((ingredient) => (
-                      <CommandItem
-                        key={ingredient.id}
-                        value={ingredient.id}
-                        onSelect={() => {
-                          onChange({ ingredientId: ingredient.id })
-                          resetSearch()
-                        }}
-                        className="cursor-pointer py-3 aria-selected:bg-accent data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
-                      >
-                        <Check
-                          className={cn(
-                            "mr-3 h-4 w-4 shrink-0",
-                            ingredientId === ingredient.id ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        <div className="flex flex-col">
-                          <span className="font-medium">{ingredient.name}</span>
-                          <MacroPreview macros={ingredient.macros} />
-                        </div>
-                      </CommandItem>
-                    ))}
+                        <CommandItem
+                          key={ingredient.id}
+                          value={ingredient.id}
+                          onSelect={() => {
+                            onChange({ ingredientId: ingredient.id })
+                            resetSearch()
+                          }}
+                          className="cursor-pointer py-3 aria-selected:bg-accent data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-3 h-4 w-4 shrink-0",
+                              ingredientId === ingredient.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-medium">{ingredient.name}</span>
+                            <MacroPreview macros={ingredient.macros} />
+                          </div>
+                        </CommandItem>
+                      ))}
                   </CommandGroup>
-                  
+
                   {searchValue && (
                     <CommandGroup>
-                       <CommandItem 
-                         value={`create-custom-${searchValue}`}
-                         onSelect={() => {
-                           setOpen(false)
-                           setShowCreateDialog(true)
-                         }}
-                         className="cursor-pointer py-3 font-semibold text-primary data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
-                       >
-                         <PlusCircle className="mr-3 h-4 w-4" />
-                         Create "{searchValue}"
-                       </CommandItem>
+                      <CommandItem
+                        value={`create-custom-${searchValue}`}
+                        onSelect={() => {
+                          setOpen(false)
+                          setShowCreateDialog(true)
+                        }}
+                        className="cursor-pointer py-3 font-semibold text-primary data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
+                      >
+                        <PlusCircle className="mr-3 h-4 w-4" />
+                        Create "{searchValue}"
+                      </CommandItem>
                     </CommandGroup>
                   )}
 
@@ -280,19 +280,19 @@ export function SmartIngredientRow({
                       <CommandGroup heading="Web Search (Open Food Facts)">
                         {isSearching && (
                           <div className="py-4 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                             <Loader2 className="h-4 w-4 animate-spin" /> Searching...
+                            <Loader2 className="h-4 w-4 animate-spin" /> Searching...
                           </div>
                         )}
-                        
+
                         {offResults.map((product, i) => (
-                          <CommandItem 
-                            key={`off-${i}`} 
+                          <CommandItem
+                            key={`off-${i}`}
                             value={`off-${product.code || i}`}
                             onSelect={() => handleImport(product)}
                             className="cursor-pointer py-3 aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/20 data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
                           >
-                             <Cloud className="mr-3 h-4 w-4 text-blue-500 shrink-0" />
-                             <div className="flex flex-col flex-1 min-w-0">
+                            <Cloud className="mr-3 h-4 w-4 text-blue-500 shrink-0" />
+                            <div className="flex flex-col flex-1 min-w-0">
                               <span className="font-medium text-blue-700 dark:text-blue-400">
                                 {product.product_name}
                               </span>
@@ -300,19 +300,19 @@ export function SmartIngredientRow({
                               <span className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
                                 <PlusCircle className="h-3 w-3" /> Tap to import
                               </span>
-                             </div>
+                            </div>
                           </CommandItem>
                         ))}
 
                         {!isSearching && offResults.length === 0 && debouncedSearch.length > 2 && (
-                           <div className="py-4 text-center text-sm text-muted-foreground">
-                             No web results found for &quot;{debouncedSearch}&quot;.
-                           </div>
+                          <div className="py-4 text-center text-sm text-muted-foreground">
+                            No web results found for &quot;{debouncedSearch}&quot;.
+                          </div>
                         )}
                       </CommandGroup>
                     </>
                   )}
-                  
+
                   {allIngredients.length === 0 && !searchValue && (
                     <CommandEmpty className="py-6 text-muted-foreground">
                       Start typing to search...
@@ -322,19 +322,19 @@ export function SmartIngredientRow({
               </Command>
             </PopoverContent>
           </Popover>
-          
-          <Button 
-             type="button" 
-             variant="outline" 
-             size="icon" 
-             className="shrink-0"
-             onClick={() => setShowScanner(true)}
-             title="Scan Barcode"
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setShowScanner(true)}
+            title="Scan Barcode"
           >
-             <Barcode className="h-4 w-4" />
+            <Barcode className="h-4 w-4" />
           </Button>
         </div>
-        
+
         <div className="w-20 sm:w-24 space-y-1">
           <Input
             type="number"

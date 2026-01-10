@@ -70,13 +70,13 @@ export function RecipeStepEditor({
                 <Label className="font-semibold text-base">Step {index + 1}</Label>
             </div>
             <div className="flex gap-1">
-                <Button variant="ghost" size="icon" disabled={isFirst} onClick={onMoveUp}>
+                <Button type="button" variant="ghost" size="icon" disabled={isFirst} onClick={onMoveUp}>
                     <ChevronUp className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" disabled={isLast} onClick={onMoveDown}>
+                <Button type="button" variant="ghost" size="icon" disabled={isLast} onClick={onMoveDown}>
                     <ChevronDown className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onRemove}>
+                <Button type="button" variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={onRemove}>
                     <Trash2 className="h-4 w-4" />
                 </Button>
             </div>

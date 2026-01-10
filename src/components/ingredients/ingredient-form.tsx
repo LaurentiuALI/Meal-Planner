@@ -36,6 +36,7 @@ export function IngredientForm({ initialData, onSuccess }: IngredientFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    e.stopPropagation() // Prevent bubbling to parent forms (like RecipeForm)
 
     const ingredientData = {
       name: formData.name,
