@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TemplateDay, TemplateMeal } from '@/types';
+import { TemplateDay, TemplateMeal, Slot } from '@/types';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,34 +11,64 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Label } from '@/components/ui/label';
 import { TemplateMealItem } from './template-meal-item';
 import { RecipeSelectorDialog } from './recipe-selector-dialog';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { cn } from '@/lib/utils';
 
 interface TemplateDayCardProps {
   day: TemplateDay;
+  slots: Slot[];
 }
 
-export function TemplateDayCard({ day }: TemplateDayCardProps) {
+function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: string, meals: TemplateMeal[], onAddMeal: () => void }) {
+    const { setNodeRef, isOver } = useDroppable({
+        id: `${dayId}::${slot.name}`
+    });
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            className={cn(
+                "space-y-2 p-2 rounded-md transition-colors min-h-[4rem] border border-transparent",
+                isOver ? "bg-accent/50 ring-2 ring-primary/20 border-primary/20" : "bg-muted/40 border-border/10"
+            )}
+        >
+            <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+                <span>{slot.name}</span>
+                <span>{slot.time}</span>
+            </div>
+            <SortableContext items={meals.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2 min-h-[2rem]">
+                    {meals.map(meal => (
+                        <TemplateMealItem key={meal.id} meal={meal} />
+                    ))}
+                </div>
+            </SortableContext>
+            
+            <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full h-7 text-xs text-muted-foreground hover:text-primary"
+                onClick={onAddMeal}
+            >
+                <Plus className="w-3 h-3 mr-1" /> Add
+            </Button>
+        </div>
+    );
+}
+
+export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
   const { updateDay, deleteDay, addMeal } = useTemplateStore();
   const [isRecipeSelectorOpen, setIsRecipeSelectorOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(day.name);
+  const [targetSlotName, setTargetSlotName] = useState<string | null>(null);
 
   // Calculate Totals
   const totals = day.meals.reduce((acc, meal) => {
-    // Assuming meal.recipe is populated. If not, these will be 0.
-    // We need to ensure the server action includes recipe data.
     const recipe = meal.recipe;
     if (!recipe) return acc;
 
-    // A rough calculation - normally we'd do this more robustly
-    // For now assuming recipe has calculated macros or we compute them from ingredients
-    // But wait, the recipe object from Prisma doesn't strictly have 'macros' property unless we computed it.
-    // The previous implementation computed macros on the fly. 
-    // Let's assume we can get them.
-    
-    // Actually, looking at the `getTemplates` action, we include:
-    // recipe -> ingredients -> ingredient
-    // So we need to calculate macros here or in the store.
-    
     let protein = 0, carbs = 0, fat = 0, cals = 0, fiber = 0;
     
     recipe.steps.forEach(step => {
@@ -70,13 +100,43 @@ export function TemplateDayCard({ day }: TemplateDayCardProps) {
     setEditingName(false);
   };
 
-  const handleAddMeal = (recipeId: string) => {
-    addMeal(day.id, recipeId);
-    setIsRecipeSelectorOpen(false);
+  const handleAddClick = (slotName: string) => {
+    setTargetSlotName(slotName);
+    setIsRecipeSelectorOpen(true);
   };
 
+  const handleAddMeal = (recipeId: string) => {
+    const slot = targetSlotName || slots[0]?.name || 'Meal';
+    addMeal(day.id, recipeId, slot);
+    setIsRecipeSelectorOpen(false);
+    setTargetSlotName(null);
+  };
+
+  // Group meals by slot
+  // Also handle meals with unknown slots (put them in first slot or a generic "Other")
+  // For now, assume if slotName matches a slot.name, it goes there.
+  // If not, put in "Other" or append to first slot?
+  // Let's create buckets.
+  
+  const slotMap = new Map<string, TemplateMeal[]>();
+  slots.forEach(s => slotMap.set(s.name, []));
+  const otherMeals: TemplateMeal[] = [];
+
+  day.meals.forEach(meal => {
+      if (slotMap.has(meal.slotName)) {
+          slotMap.get(meal.slotName)!.push(meal);
+      } else {
+          otherMeals.push(meal);
+      }
+  });
+
+  // Sort meals within slots by sortOrder
+  slots.forEach(s => {
+      slotMap.get(s.name)!.sort((a, b) => a.sortOrder - b.sortOrder);
+  });
+
   return (
-    <Card className="w-80 h-full flex flex-col shrink-0">
+    <Card className="w-[85vw] md:w-80 h-full flex flex-col shrink-0 bg-card shadow-sm border-border/50">
       <CardHeader className="pb-2 space-y-1">
         <div className="flex items-center justify-between">
           {editingName ? (
@@ -100,7 +160,7 @@ export function TemplateDayCard({ day }: TemplateDayCardProps) {
           <div className="flex gap-1">
              <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground">
                   <Settings className="w-3 h-3" />
                 </Button>
               </PopoverTrigger>
@@ -172,17 +232,29 @@ export function TemplateDayCard({ day }: TemplateDayCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto p-2 space-y-2 bg-muted/20">
-        {day.meals.map((meal) => (
-          <TemplateMealItem key={meal.id} meal={meal} />
+      <CardContent className="flex-1 overflow-y-auto p-2 space-y-3">
+        {slots.map(slot => (
+            <SlotContainer 
+                key={slot.id} 
+                slot={slot} 
+                dayId={day.id} 
+                meals={slotMap.get(slot.name) || []} 
+                onAddMeal={() => handleAddClick(slot.name)}
+            />
         ))}
+        
+        {/* Render meals with unknown slots if any */}
+        {otherMeals.length > 0 && (
+            <div className="space-y-2 p-2 rounded-md bg-destructive/10">
+                <div className="text-xs font-semibold text-destructive uppercase tracking-wider">Unassigned</div>
+                <SortableContext items={otherMeals.map(m => m.id)} strategy={verticalListSortingStrategy}>
+                    {otherMeals.map(meal => (
+                        <TemplateMealItem key={meal.id} meal={meal} />
+                    ))}
+                </SortableContext>
+            </div>
+        )}
       </CardContent>
-
-      <CardFooter className="p-2">
-        <Button className="w-full" variant="outline" onClick={() => setIsRecipeSelectorOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Add Meal
-        </Button>
-      </CardFooter>
 
        <RecipeSelectorDialog 
         open={isRecipeSelectorOpen} 
@@ -207,3 +279,4 @@ function MacroBar({ label, value, target, color }: { label: string, value: numbe
     </div>
   )
 }
+

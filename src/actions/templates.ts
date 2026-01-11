@@ -248,12 +248,107 @@ export async function applyPlanToSchedule(templateId: string, startDateStr: stri
             recipeId: tm.recipeId,
             slotName: tm.slotName, 
             sortOrder: currentSortOrder++,
-            servings: tm.servings
+            servings: tm.servings,
+            modifications: tm.modifications
           }
         });
       }
     }
   });
   
-  revalidatePath('/plan'); 
+  
+  
+  revalidatePath('/plan');
+  
+}
+  
+
+  
+export async function updateMealModifications(mealId: string, modifications: any) {
+  
+  await db.templateMeal.update({
+  
+    where: { id: mealId },
+  
+    data: { 
+  
+        modifications: JSON.stringify(modifications)
+  
+    }
+  
+  });
+  
+  revalidatePath('/plan');
+  
+}
+  
+export async function moveMealInTemplate(
+  mealId: string, 
+  targetDayId: string, 
+  slotName: string, 
+  newIndex: number
+) {
+  await db.$transaction(async (tx) => {
+    // 1. Get the meal to check current location
+    const meal = await tx.templateMeal.findUnique({ where: { id: mealId } });
+    if (!meal) throw new Error("Meal not found");
+
+    // 2. If moving to a different list (Day or Slot changed)
+    if (meal.templateDayId !== targetDayId || meal.slotName !== slotName) {
+      // Shift items in new list >= newIndex
+      await tx.templateMeal.updateMany({
+        where: { 
+            templateDayId: targetDayId, 
+            slotName: slotName, 
+            sortOrder: { gte: newIndex } 
+        },
+        data: { sortOrder: { increment: 1 } }
+      });
+
+      // Update the meal
+      await tx.templateMeal.update({
+        where: { id: mealId },
+        data: { 
+            templateDayId: targetDayId, 
+            slotName: slotName, 
+            sortOrder: newIndex 
+        }
+      });
+      
+    } else {
+        // Same list reorder
+        if (meal.sortOrder === newIndex) return;
+        
+        if (meal.sortOrder < newIndex) {
+            // Shift items between old and new index down
+             await tx.templateMeal.updateMany({
+                where: {
+                    templateDayId: targetDayId,
+                    slotName: slotName,
+                    sortOrder: { gt: meal.sortOrder, lte: newIndex },
+                    id: { not: mealId }
+                },
+                data: { sortOrder: { decrement: 1 } }
+             });
+        } else {
+             // Shift items between new and old index up
+             await tx.templateMeal.updateMany({
+                where: {
+                    templateDayId: targetDayId,
+                    slotName: slotName,
+                    sortOrder: { gte: newIndex, lt: meal.sortOrder },
+                    id: { not: mealId }
+                },
+                data: { sortOrder: { increment: 1 } }
+             });
+        }
+
+        await tx.templateMeal.update({
+            where: { id: mealId },
+            data: { sortOrder: newIndex }
+        });
+    }
+  });
+  
+  revalidatePath('/plan');
 }

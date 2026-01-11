@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 model Ingredient {
@@ -92,6 +91,7 @@ model Meal {
   servings  Int     @default(1)
   sortOrder Int     @default(0) // To keep order of meals
   slotName  String  @default("Meal") // e.g., "Breakfast", "Lunch"
+  modifications String? // JSON string: { ingredients: { [id]: { amount: number } }, tools: { [id]: { active: boolean } } }
 
   plan      DayPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
@@ -140,7 +140,15 @@ model TemplateMeal {
   slotName      String      // e.g. "Breakfast"
   sortOrder     Int         @default(0)
   servings      Int         @default(1)
+  modifications String?     // JSON string for overrides
 
   templateDay   TemplateDay @relation(fields: [templateDayId], references: [id], onDelete: Cascade)
   recipe        Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model Slot {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  time      String   // "08:00"
+  sortOrder Int      @default(0)
 }

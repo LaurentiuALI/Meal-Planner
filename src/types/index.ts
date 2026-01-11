@@ -47,12 +47,18 @@ export interface Recipe {
   computedMacros?: Macros; 
 }
 
+export interface MealModifications {
+  ingredients: Record<string, { amount: number; unit?: string }>; // key is ingredientId
+  tools: Record<string, { active: boolean }>; // key is toolId
+}
+
 export interface Meal {
   id: string;
   sortOrder: number;
   slotName: string;
   recipeId: string;
   servings: number;
+  modifications?: MealModifications;
 }
 
 export interface Settings {
@@ -83,6 +89,7 @@ export interface TemplateMeal {
   slotName: string;
   sortOrder: number;
   servings: number;
+  modifications?: MealModifications;
 }
 
 export interface TemplateDay {
@@ -107,4 +114,11 @@ export interface PlanTemplate {
   days: TemplateDay[];
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface Slot {
+  id: string;
+  name: string;
+  time: string;
+  sortOrder: number;
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { PlanTemplate, TemplateDay, TemplateMeal } from '@/types';
-import { getTemplates, updateTemplateDay, addDayToTemplate, removeTemplateDay, addMealToTemplateDay, removeTemplateMeal, togglePlanActive } from '@/actions/templates';
+import { getTemplates, updateTemplateDay, addDayToTemplate, removeTemplateDay, addMealToTemplateDay, removeTemplateMeal, togglePlanActive, moveMealInTemplate, updateMealModifications } from '@/actions/templates';
 
 interface TemplateStore {
   templates: PlanTemplate[];
@@ -22,6 +22,8 @@ interface TemplateStore {
   
   addMeal: (dayId: string, recipeId: string, slot?: string) => Promise<void>;
   deleteMeal: (mealId: string) => Promise<void>;
+  moveMeal: (mealId: string, targetDayId: string, slotName: string, newIndex: number) => Promise<void>;
+  updateMealConfig: (mealId: string, modifications: any) => Promise<void>;
 }
 
 export const useTemplateStore = create<TemplateStore>((set, get) => ({
@@ -97,5 +99,30 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   deleteMeal: async (mealId) => {
     await removeTemplateMeal(mealId);
     await get().loadTemplates();
+  },
+
+  moveMeal: async (mealId, targetDayId, slotName, newIndex) => {
+    // Optimistic Update can be complex for reordering, let's rely on fast server action + revalidate for now to avoid state mismatch bugs.
+    // If strict optimistic is needed, we can implement it.
+    await moveMealInTemplate(mealId, targetDayId, slotName, newIndex);
+    await get().loadTemplates();
+  },
+
+  updateMealConfig: async (mealId, modifications) => {
+    // Optimistic update
+    set(state => ({
+        templates: state.templates.map(t => {
+            if (t.id !== state.activeTemplateId) return t;
+            return {
+                ...t,
+                days: t.days.map(d => ({
+                    ...d,
+                    meals: d.meals.map(m => m.id === mealId ? { ...m, modifications } : m)
+                }))
+            };
+        })
+    }));
+    await updateMealModifications(mealId, modifications);
+    // await get().loadTemplates(); // Optional sync
   }
 }));
