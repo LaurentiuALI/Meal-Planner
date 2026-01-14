@@ -10,7 +10,7 @@ import { Settings, Trash2, Plus, Utensils } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { TemplateMealItem } from './template-meal-item';
-import { RecipeSelectorDialog } from './recipe-selector-dialog';
+import { FoodSelectorDialog } from './food-selector-dialog';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
@@ -58,38 +58,60 @@ function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: s
 }
 
 export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
-  const { updateDay, deleteDay, addMeal } = useTemplateStore();
-  const [isRecipeSelectorOpen, setIsRecipeSelectorOpen] = useState(false);
+  const { updateDay, deleteDay, addMeal, addIngredient } = useTemplateStore();
+  const [isFoodSelectorOpen, setIsFoodSelectorOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(day.name);
   const [targetSlotName, setTargetSlotName] = useState<string | null>(null);
 
   // Calculate Totals
   const totals = day.meals.reduce((acc, meal) => {
-    const recipe = meal.recipe;
-    if (!recipe) return acc;
-
     let protein = 0, carbs = 0, fat = 0, cals = 0, fiber = 0;
     
-    recipe.steps.forEach(step => {
-        step.ingredients.forEach(ri => {
-            if (!ri.ingredient) return;
-            const ing = ri.ingredient;
-            const ratio = ri.amount / 100;
-            protein += ing.macros.protein * ratio;
-            carbs += ing.macros.carbs * ratio;
-            fat += ing.macros.fat * ratio;
-            cals += ing.macros.calories * ratio;
-            fiber += ing.macros.fiber * ratio;
+    if (meal.recipe) {
+        meal.recipe.steps.forEach(step => {
+            step.ingredients.forEach(ri => {
+                if (!ri.ingredient) return;
+                const ing = ri.ingredient;
+                const ratio = ri.amount / 100;
+                protein += ing.macros.protein * ratio;
+                carbs += ing.macros.carbs * ratio;
+                fat += ing.macros.fat * ratio;
+                cals += ing.macros.calories * ratio;
+                fiber += ing.macros.fiber * ratio;
+            });
         });
-    });
+        
+        // Multiply by servings
+        protein *= meal.servings;
+        carbs *= meal.servings;
+        fat *= meal.servings;
+        cals *= meal.servings;
+        fiber *= meal.servings;
+
+    } else if (meal.ingredient && meal.ingredientAmount) {
+        const ing = meal.ingredient;
+        const ratio = meal.ingredientAmount / 100; // assuming per 100 unit base for macros
+        protein = ing.macros.protein * ratio;
+        carbs = ing.macros.carbs * ratio;
+        fat = ing.macros.fat * ratio;
+        cals = ing.macros.calories * ratio;
+        fiber = ing.macros.fiber * ratio;
+        
+        // Multiply by servings (if we treat servings as multiplier for standalone ingredients too)
+        protein *= meal.servings;
+        carbs *= meal.servings;
+        fat *= meal.servings;
+        cals *= meal.servings;
+        fiber *= meal.servings;
+    }
 
     return {
-      protein: acc.protein + (protein * meal.servings),
-      carbs: acc.carbs + (carbs * meal.servings),
-      fat: acc.fat + (fat * meal.servings),
-      calories: acc.calories + (cals * meal.servings),
-      fiber: acc.fiber + (fiber * meal.servings),
+      protein: acc.protein + protein,
+      carbs: acc.carbs + carbs,
+      fat: acc.fat + fat,
+      calories: acc.calories + cals,
+      fiber: acc.fiber + fiber,
     };
   }, { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 });
 
@@ -102,13 +124,18 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
 
   const handleAddClick = (slotName: string) => {
     setTargetSlotName(slotName);
-    setIsRecipeSelectorOpen(true);
+    setIsFoodSelectorOpen(true);
   };
 
-  const handleAddMeal = (recipeId: string) => {
+  const handleFoodSelect = (type: 'recipe' | 'ingredient', id: string) => {
     const slot = targetSlotName || slots[0]?.name || 'Meal';
-    addMeal(day.id, recipeId, slot);
-    setIsRecipeSelectorOpen(false);
+    if (type === 'recipe') {
+        addMeal(day.id, id, slot);
+    } else {
+        // Default to 100 amount for now
+        addIngredient(day.id, id, 100, slot);
+    }
+    setIsFoodSelectorOpen(false);
     setTargetSlotName(null);
   };
 
@@ -256,10 +283,10 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
         )}
       </CardContent>
 
-       <RecipeSelectorDialog 
-        open={isRecipeSelectorOpen} 
-        onOpenChange={setIsRecipeSelectorOpen}
-        onSelect={handleAddMeal}
+       <FoodSelectorDialog 
+        open={isFoodSelectorOpen} 
+        onOpenChange={setIsFoodSelectorOpen}
+        onSelect={handleFoodSelect}
       />
     </Card>
   );

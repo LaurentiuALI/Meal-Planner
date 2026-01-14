@@ -18,6 +18,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
           meals: {
             orderBy: { sortOrder: 'asc' },
             include: {
+              ingredient: true,
               recipe: {
                 include: {
                   steps: {
@@ -62,6 +63,24 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
         id: m.id,
         templateDayId: m.templateDayId,
         recipeId: m.recipeId,
+        ingredientId: m.ingredientId,
+        ingredientAmount: m.ingredientAmount,
+        ingredient: m.ingredient ? {
+            id: m.ingredient.id,
+            name: m.ingredient.name,
+            unit: m.ingredient.unit,
+            macros: {
+                protein: m.ingredient.protein,
+                carbs: m.ingredient.carbs,
+                fat: m.ingredient.fat,
+                calories: m.ingredient.calories,
+                fiber: m.ingredient.fiber
+            },
+            purchaseUnit: {
+                name: m.ingredient.purchaseUnitName,
+                amount: m.ingredient.purchaseUnitAmount
+            }
+        } : undefined,
         slotName: m.slotName,
         sortOrder: m.sortOrder,
         servings: m.servings,
@@ -190,6 +209,39 @@ export async function addMealToTemplateDay(dayId: string, recipeId: string, slot
   revalidatePath('/plan');
 }
 
+export async function addIngredientToTemplateDay(dayId: string, ingredientId: string, amount: number, slotName: string = "Meal") {
+    const lastMeal = await db.templateMeal.findFirst({
+     where: { templateDayId: dayId },
+     orderBy: { sortOrder: 'desc' }
+   });
+   
+   const sortOrder = lastMeal ? lastMeal.sortOrder + 1 : 0;
+ 
+   await db.templateMeal.create({
+     data: {
+       templateDayId: dayId,
+       ingredientId,
+       ingredientAmount: amount,
+       slotName,
+       sortOrder
+     }
+   });
+   revalidatePath('/plan');
+ }
+
+export async function updateTemplateMeal(mealId: string, data: Partial<TemplateMeal>) {
+  // Exclude fields that shouldn't be updated directly or need special handling if necessary
+  // But for now, simple update is fine.
+  // Note: Prisma types vs Our Types mismatch might require 'as any' or selective picking
+  const { id, templateDayId, recipe, ingredient, modifications, ...updateData } = data as any;
+
+  await db.templateMeal.update({
+    where: { id: mealId },
+    data: updateData
+  });
+  revalidatePath('/plan');
+}
+
 export async function removeTemplateMeal(mealId: string) {
   await db.templateMeal.delete({
     where: { id: mealId }
@@ -246,6 +298,8 @@ export async function applyPlanToSchedule(templateId: string, startDateStr: stri
           data: {
             planId: dayPlan.id,
             recipeId: tm.recipeId,
+            ingredientId: tm.ingredientId,
+            ingredientAmount: tm.ingredientAmount,
             slotName: tm.slotName, 
             sortOrder: currentSortOrder++,
             servings: tm.servings,

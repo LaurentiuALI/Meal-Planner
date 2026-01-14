@@ -8,7 +8,11 @@ export async function getPlans(): Promise<DayPlan[]> {
   const data = await db.dayPlan.findMany({
     include: {
       meals: {
-        orderBy: { sortOrder: 'asc' }
+        orderBy: { sortOrder: 'asc' },
+        include: {
+            ingredient: true,
+            recipe: true
+        }
       }
     }
   })
@@ -21,7 +25,31 @@ export async function getPlans(): Promise<DayPlan[]> {
       sortOrder: m.sortOrder,
       slotName: m.slotName,
       recipeId: m.recipeId,
-      servings: m.servings
+      servings: m.servings,
+      ingredientId: m.ingredientId,
+      ingredientAmount: m.ingredientAmount,
+      ingredient: m.ingredient ? {
+        id: m.ingredient.id,
+        name: m.ingredient.name,
+        unit: m.ingredient.unit,
+        macros: {
+            protein: m.ingredient.protein,
+            carbs: m.ingredient.carbs,
+            fat: m.ingredient.fat,
+            calories: m.ingredient.calories,
+            fiber: m.ingredient.fiber
+        },
+        purchaseUnit: {
+            name: m.ingredient.purchaseUnitName,
+            amount: m.ingredient.purchaseUnitAmount
+        }
+      } : undefined,
+      recipe: m.recipe ? {
+         id: m.recipe.id,
+         name: m.recipe.name,
+         method: [],
+         steps: []
+      } : undefined
     }))
   }))
 }
@@ -91,23 +119,25 @@ export async function setMeal(date: string, meal: Omit<Meal, 'id' | 'sortOrder'>
     }
   })
 
+  const mealData = {
+    recipeId: meal.recipeId,
+    servings: meal.servings,
+    slotName: meal.slotName,
+    ingredientId: meal.ingredientId,
+    ingredientAmount: meal.ingredientAmount
+  };
+
   if (existingMeal) {
     await db.meal.update({
       where: { id: existingMeal.id },
-      data: {
-        recipeId: meal.recipeId,
-        servings: meal.servings,
-        slotName: meal.slotName
-      }
+      data: mealData
     })
   } else {
     await db.meal.create({
       data: {
         planId: plan.id,
-        recipeId: meal.recipeId,
-        servings: meal.servings,
         sortOrder: mealIndex,
-        slotName: meal.slotName
+        ...mealData
       }
     })
   }

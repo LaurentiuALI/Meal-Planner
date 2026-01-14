@@ -23,6 +23,8 @@ model Ingredient {
   // Relations
   usedInRecipes     RecipeIngredient[]
   barcodes          Barcode[]
+  meals             Meal[]
+  templateMeals     TemplateMeal[]
 }
 
 model Barcode {
@@ -88,14 +90,19 @@ model DayPlan {
 model Meal {
   id        String  @id @default(uuid())
   planId    String
-  recipeId  String
+  recipeId  String?
   servings  Int     @default(1)
   sortOrder Int     @default(0) // To keep order of meals
   slotName  String  @default("Meal") // e.g., "Breakfast", "Lunch"
   modifications String? // JSON string: { ingredients: { [id]: { amount: number } }, tools: { [id]: { active: boolean } } }
 
+  // Ingredient standalone support
+  ingredientId String?
+  ingredientAmount Float?
+
   plan      DayPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
-  recipe    Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe    Recipe?  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient? @relation(fields: [ingredientId], references: [id])
 }
 
 model Settings {
@@ -137,14 +144,19 @@ model TemplateDay {
 model TemplateMeal {
   id            String      @id @default(uuid())
   templateDayId String
-  recipeId      String
+  recipeId      String?
   slotName      String      // e.g. "Breakfast"
   sortOrder     Int         @default(0)
   servings      Int         @default(1)
   modifications String?     // JSON string for overrides
 
+  // Ingredient standalone support
+  ingredientId String?
+  ingredientAmount Float?
+
   templateDay   TemplateDay @relation(fields: [templateDayId], references: [id], onDelete: Cascade)
-  recipe        Recipe      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipe        Recipe?      @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient    Ingredient? @relation(fields: [ingredientId], references: [id])
 }
 
 model Slot {

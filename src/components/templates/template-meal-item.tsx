@@ -17,7 +17,7 @@ interface TemplateMealItemProps {
 }
 
 export function TemplateMealItem({ meal }: TemplateMealItemProps) {
-  const { deleteMeal, updateMealConfig } = useTemplateStore();
+  const { deleteMeal, updateMealConfig, updateMeal } = useTemplateStore();
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -37,29 +37,40 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
   };
 
   const recipe = meal.recipe;
+  const ingredient = meal.ingredient;
   const mods = meal.modifications || { ingredients: {}, tools: {} };
 
   // Flatten ingredients and tools
   const { ingredients, tools } = useMemo(() => {
-    if (!recipe) return { ingredients: [], tools: [] };
-    
-    const ings: any[] = [];
-    const tls: any[] = [];
+    if (recipe) {
+        const ings: any[] = [];
+        const tls: any[] = [];
 
-    recipe.steps.forEach(step => {
-        step.ingredients.forEach(ri => {
-            if (ri.ingredient) {
-                ings.push({ 
-                    ...ri.ingredient, 
-                    baseAmount: ri.amount, 
-                    stepId: step.id 
-                });
-            }
+        recipe.steps.forEach(step => {
+            step.ingredients.forEach(ri => {
+                if (ri.ingredient) {
+                    ings.push({ 
+                        ...ri.ingredient, 
+                        baseAmount: ri.amount, 
+                        stepId: step.id 
+                    });
+                }
+            });
+            step.tools.forEach(t => tls.push(t));
         });
-        step.tools.forEach(t => tls.push(t));
-    });
-    return { ingredients: ings, tools: tls };
-  }, [recipe]);
+        return { ingredients: ings, tools: tls };
+    } else if (ingredient && meal.ingredientAmount) {
+         return { 
+            ingredients: [{
+                ...ingredient,
+                baseAmount: meal.ingredientAmount,
+                stepId: 'main'
+            }], 
+            tools: [] 
+         };
+    }
+    return { ingredients: [], tools: [] };
+  }, [recipe, ingredient, meal.ingredientAmount]);
 
   // Calculate macros handling overrides
   const macros = useMemo(() => {
@@ -69,8 +80,12 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
     
     ingredients.forEach(ing => {
         // Check for override
-        const override = mods.ingredients?.[ing.id];
-        const amount = override ? override.amount : ing.baseAmount;
+        let amount = ing.baseAmount;
+        
+        if (recipe) {
+             const override = mods.ingredients?.[ing.id];
+             if (override) amount = override.amount;
+        } 
         
         const ratio = amount / 100;
         p += ing.macros.protein * ratio;
@@ -85,30 +100,38 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
         f: Math.round(f * meal.servings),
         cal: Math.round(cal * meal.servings)
     };
-  }, [ingredients, mods, meal.servings]);
+  }, [ingredients, mods, meal.servings, recipe]);
 
   const handleIngredientChange = (ingId: string, value: string) => {
     const num = parseFloat(value);
-    const newMods = { ...mods };
-    if (!newMods.ingredients) newMods.ingredients = {};
-    
-    if (isNaN(num)) return; // Handle empty/invalid better in real app
+    if (isNaN(num)) return;
 
-    newMods.ingredients[ingId] = { 
-        amount: num,
-        unit: newMods.ingredients[ingId]?.unit 
-    };
-    updateMealConfig(meal.id, newMods);
+    if (recipe) {
+        const newMods = { ...mods };
+        if (!newMods.ingredients) newMods.ingredients = {};
+        newMods.ingredients[ingId] = { 
+            amount: num,
+            unit: newMods.ingredients[ingId]?.unit 
+        };
+        updateMealConfig(meal.id, newMods);
+    } else {
+        // Standalone ingredient - update directly
+        updateMeal(meal.id, { ingredientAmount: num });
+    }
   };
 
   const resetIngredient = (ingId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newMods = { ...mods };
-    if (newMods.ingredients && newMods.ingredients[ingId]) {
-        delete newMods.ingredients[ingId];
-        updateMealConfig(meal.id, newMods);
+    if (recipe) {
+        const newMods = { ...mods };
+        if (newMods.ingredients && newMods.ingredients[ingId]) {
+            delete newMods.ingredients[ingId];
+            updateMealConfig(meal.id, newMods);
+        }
     }
   };
+
+  const itemName = recipe ? recipe.name : ingredient ? ingredient.name : 'Unknown';
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
@@ -123,7 +146,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between pr-6">
-                         <span className="text-sm font-medium truncate">{recipe?.name || 'Unknown'}</span>
+                         <span className="text-sm font-medium truncate">{itemName}</span>
                     </div>
                    
                     <div className="text-xs text-muted-foreground mt-0.5 flex gap-2">
@@ -166,9 +189,19 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                     <div className="space-y-1 mt-2">
                         <Label className="text-xs text-muted-foreground">Ingredients (per 1 serving)</Label>
                         {ingredients.map(ing => {
-                            const override = mods.ingredients?.[ing.id];
-                            const currentAmount = override ? override.amount : ing.baseAmount;
-                            const isModified = !!override;
+                            let currentAmount = ing.baseAmount;
+                            let isModified = false;
+                            
+                            if (recipe) {
+                                const override = mods.ingredients?.[ing.id];
+                                if (override) {
+                                    currentAmount = override.amount;
+                                    isModified = true;
+                                }
+                            } else {
+                                // For standalone, we are always editing the "base", so no "modified" state relative to base.
+                                // But maybe we want to show it's editable.
+                            }
 
                             return (
                                 <div key={ing.id + ing.stepId} className="flex items-center justify-between text-xs gap-2">
@@ -182,7 +215,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                                         />
                                         <span className="w-6 text-muted-foreground">{ing.unit}</span>
                                     </div>
-                                    {isModified && (
+                                    {isModified && recipe && (
                                          <Button 
                                             variant="ghost" size="icon" className="h-5 w-5 shrink-0"
                                             title="Reset to recipe default"

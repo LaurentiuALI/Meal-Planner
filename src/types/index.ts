@@ -56,7 +56,11 @@ export interface Meal {
   id: string;
   sortOrder: number;
   slotName: string;
-  recipeId: string;
+  recipeId?: string | null;
+  ingredientId?: string | null;
+  ingredientAmount?: number | null;
+  ingredient?: Ingredient;
+  recipe?: Recipe;
   servings: number;
   modifications?: MealModifications;
 }
@@ -84,7 +88,10 @@ export interface Badge {
 export interface TemplateMeal {
   id: string;
   templateDayId: string;
-  recipeId: string;
+  recipeId?: string | null;
+  ingredientId?: string | null;
+  ingredientAmount?: number | null;
+  ingredient?: Ingredient;
   recipe?: Recipe;
   slotName: string;
   sortOrder: number;

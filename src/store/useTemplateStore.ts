@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { PlanTemplate, TemplateDay, TemplateMeal } from '@/types';
-import { getTemplates, updateTemplateDay, addDayToTemplate, removeTemplateDay, addMealToTemplateDay, removeTemplateMeal, togglePlanActive, moveMealInTemplate, updateMealModifications } from '@/actions/templates';
+import { getTemplates, updateTemplateDay, addDayToTemplate, removeTemplateDay, addMealToTemplateDay, removeTemplateMeal, togglePlanActive, moveMealInTemplate, updateMealModifications, deletePlanTemplate, addIngredientToTemplateDay, updateTemplateMeal } from '@/actions/templates';
 
 interface TemplateStore {
   templates: PlanTemplate[];
@@ -13,6 +13,7 @@ interface TemplateStore {
   // Actions
   loadTemplates: () => Promise<void>;
   setActiveTemplate: (id: string | null) => void;
+  deleteTemplate: (id: string) => Promise<void>;
   toggleActive: (id: string, isActive: boolean) => Promise<void>;
   
   // Optimistic / wrapper actions
@@ -21,6 +22,8 @@ interface TemplateStore {
   updateDay: (dayId: string, data: Partial<TemplateDay>) => Promise<void>;
   
   addMeal: (dayId: string, recipeId: string, slot?: string) => Promise<void>;
+  addIngredient: (dayId: string, ingredientId: string, amount: number, slot?: string) => Promise<void>;
+  updateMeal: (mealId: string, data: Partial<TemplateMeal>) => Promise<void>;
   deleteMeal: (mealId: string) => Promise<void>;
   moveMeal: (mealId: string, targetDayId: string, slotName: string, newIndex: number) => Promise<void>;
   updateMealConfig: (mealId: string, modifications: any) => Promise<void>;
@@ -51,6 +54,15 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
   },
 
   setActiveTemplate: (id) => set({ activeTemplateId: id }),
+
+  deleteTemplate: async (id) => {
+    // If deleting active template, clear selection
+    if (get().activeTemplateId === id) {
+        set({ activeTemplateId: null });
+    }
+    await deletePlanTemplate(id);
+    await get().loadTemplates();
+  },
 
   toggleActive: async (id, isActive) => {
     // Optimistic
@@ -93,6 +105,17 @@ export const useTemplateStore = create<TemplateStore>((set, get) => ({
 
   addMeal: async (dayId, recipeId, slot) => {
     await addMealToTemplateDay(dayId, recipeId, slot);
+    await get().loadTemplates();
+  },
+
+  addIngredient: async (dayId, ingredientId, amount, slot) => {
+    await addIngredientToTemplateDay(dayId, ingredientId, amount, slot);
+    await get().loadTemplates();
+  },
+
+  updateMeal: async (mealId, data) => {
+    // Optimistic update could go here
+    await updateTemplateMeal(mealId, data);
     await get().loadTemplates();
   },
 

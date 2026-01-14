@@ -6,14 +6,14 @@ import { createPlanTemplate } from '@/actions/templates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TemplateEditor } from '@/components/templates/template-editor';
-import { Plus, CheckCircle2, AlertTriangle, Menu, X } from 'lucide-react';
+import { Plus, CheckCircle2, AlertTriangle, Menu, X, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { SlotSettingsDialog } from '@/components/plan/slot-settings-dialog';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 export default function PlansPage() {
-  const { templates, loadTemplates, setActiveTemplate, activeTemplateId, getActiveTemplate } = useTemplateStore();
+  const { templates, loadTemplates, setActiveTemplate, activeTemplateId, getActiveTemplate, deleteTemplate } = useTemplateStore();
   const [newPlanName, setNewPlanName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -29,6 +29,13 @@ export default function PlansPage() {
     await loadTemplates();
     setNewPlanName('');
     setIsCreating(false);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm('Are you sure you want to delete this plan?')) {
+      await deleteTemplate(id);
+    }
   };
 
   const activeTemplate = getActiveTemplate();
@@ -64,7 +71,7 @@ export default function PlansPage() {
                 setIsMobileMenuOpen(false);
             }}
             className={`
-              p-2 rounded-md cursor-pointer text-sm font-medium transition-colors flex justify-between items-center
+              p-2 rounded-md cursor-pointer text-sm font-medium transition-colors flex justify-between items-center group
               ${activeTemplateId === template.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
             `}
           >
@@ -74,7 +81,17 @@ export default function PlansPage() {
                   {template.days.length} Days
                 </div>
             </div>
-            {template.isActive && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+            <div className="flex items-center gap-2">
+              {template.isActive && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${activeTemplateId === template.id ? 'text-primary-foreground hover:text-primary-foreground/80 hover:bg-primary/80' : ''}`}
+                onClick={(e) => handleDelete(e, template.id)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         ))}
       </div>
