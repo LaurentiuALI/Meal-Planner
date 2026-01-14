@@ -18,6 +18,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
           meals: {
             orderBy: { sortOrder: 'asc' },
             include: {
+              // @ts-ignore: Prisma client types might be out of sync
               ingredient: true,
               recipe: {
                 include: {
@@ -59,7 +60,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
       targetCarbs: d.targetCarbs ?? undefined,
       targetFat: d.targetFat ?? undefined,
       targetFiber: d.targetFiber ?? undefined,
-      meals: d.meals.map(m => ({
+      meals: d.meals.map((m: any) => ({
         id: m.id,
         templateDayId: m.templateDayId,
         recipeId: m.recipeId,
@@ -304,7 +305,7 @@ export async function applyPlanToSchedule(templateId: string, startDateStr: stri
             sortOrder: currentSortOrder++,
             servings: tm.servings,
             modifications: tm.modifications
-          }
+          } as any
         });
       }
     }

@@ -127,7 +127,7 @@ export default function RecipesPage() {
                     </div>
                 )}
               </div>
-              <div className="grid grid-cols-4 gap-2 text-center text-xs border-t pt-4">
+              <div className="grid grid-cols-5 gap-2 text-center text-xs border-t pt-4">
                 <div>
                   <div className="font-bold">{recipe.macros.calories.toFixed(0)}</div>
                   <div className="text-muted-foreground">Cals</div>
@@ -143,6 +143,10 @@ export default function RecipesPage() {
                 <div>
                   <div className="font-bold">{recipe.macros.fat.toFixed(1)}g</div>
                   <div className="text-muted-foreground">F</div>
+                </div>
+                <div>
+                  <div className="font-bold">{recipe.macros.fiber.toFixed(1)}g</div>
+                  <div className="text-muted-foreground">Fib</div>
                 </div>
               </div>
             </CardContent>

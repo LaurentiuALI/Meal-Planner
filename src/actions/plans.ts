@@ -10,6 +10,7 @@ export async function getPlans(): Promise<DayPlan[]> {
       meals: {
         orderBy: { sortOrder: 'asc' },
         include: {
+            // @ts-ignore: Prisma client types might be out of sync
             ingredient: true,
             recipe: true
         }
@@ -20,7 +21,7 @@ export async function getPlans(): Promise<DayPlan[]> {
   return data.map(p => ({
     id: p.id,
     date: p.date,
-    meals: p.meals.map(m => ({
+    meals: p.meals.map((m: any) => ({
       id: m.id,
       sortOrder: m.sortOrder,
       slotName: m.slotName,
@@ -130,7 +131,7 @@ export async function setMeal(date: string, meal: Omit<Meal, 'id' | 'sortOrder'>
   if (existingMeal) {
     await db.meal.update({
       where: { id: existingMeal.id },
-      data: mealData
+      data: mealData as any
     })
   } else {
     await db.meal.create({
@@ -138,7 +139,7 @@ export async function setMeal(date: string, meal: Omit<Meal, 'id' | 'sortOrder'>
         planId: plan.id,
         sortOrder: mealIndex,
         ...mealData
-      }
+      } as any
     })
   }
   

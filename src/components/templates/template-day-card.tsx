@@ -240,6 +240,17 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
                          onChange={(e) => updateDay(day.id, { targetFat: e.target.value ? parseInt(e.target.value) : undefined })}
                       />
                     </div>
+                     <div className="grid grid-cols-3 items-center gap-4">
+                      <Label htmlFor="t-fiber">Fiber</Label>
+                      <Input 
+                        id="t-fiber" 
+                        type="number" 
+                        className="col-span-2 h-8" 
+                        placeholder="Global" 
+                         value={day.targetFiber || ''}
+                         onChange={(e) => updateDay(day.id, { targetFiber: e.target.value ? parseInt(e.target.value) : undefined })}
+                      />
+                    </div>
                   </div>
                 </div>
               </PopoverContent>
@@ -256,6 +267,7 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
            <MacroBar label="Prot" value={totals.protein} target={day.targetProtein || 150} color="bg-blue-500" />
            <MacroBar label="Carb" value={totals.carbs} target={day.targetCarbs || 200} color="bg-amber-500" />
            <MacroBar label="Fat" value={totals.fat} target={day.targetFat || 60} color="bg-emerald-500" />
+           <MacroBar label="Fiber" value={totals.fiber} target={day.targetFiber || 30} color="bg-green-600" />
         </div>
       </CardHeader>
 

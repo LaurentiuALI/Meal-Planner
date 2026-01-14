@@ -76,7 +76,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
   const macros = useMemo(() => {
     if (!ingredients.length) return null;
     
-    let p = 0, c = 0, f = 0, cal = 0;
+    let p = 0, c = 0, f = 0, fib = 0, cal = 0;
     
     ingredients.forEach(ing => {
         // Check for override
@@ -91,6 +91,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
         p += ing.macros.protein * ratio;
         c += ing.macros.carbs * ratio;
         f += ing.macros.fat * ratio;
+        fib += ing.macros.fiber * ratio;
         cal += ing.macros.calories * ratio;
     });
 
@@ -98,6 +99,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
         p: Math.round(p * meal.servings),
         c: Math.round(c * meal.servings),
         f: Math.round(f * meal.servings),
+        fib: Math.round(fib * meal.servings),
         cal: Math.round(cal * meal.servings)
     };
   }, [ingredients, mods, meal.servings, recipe]);
@@ -160,6 +162,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                             <span className="text-blue-500">P:{macros.p}</span>
                             <span className="text-amber-500">C:{macros.c}</span>
                             <span className="text-emerald-500">F:{macros.f}</span>
+                            <span className="text-green-600">Fib:{macros.fib}</span>
                         </div>
                     )}
                 </div>

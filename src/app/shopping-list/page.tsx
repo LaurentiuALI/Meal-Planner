@@ -4,15 +4,19 @@ import { useMemo, useEffect } from "react"
 import { useTemplateStore } from "@/store/useTemplateStore"
 import { useRecipeStore } from "@/store/useRecipeStore"
 import { useIngredientStore } from "@/store/useIngredientStore"
+import { useShoppingListStore } from "@/store/useShoppingListStore"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ShoppingBasket, CheckCircle2, AlertTriangle } from "lucide-react"
+import { ShoppingBasket, CheckCircle2, AlertTriangle, Check, Trash2 } from "lucide-react"
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export default function ShoppingListPage() {
   const { templates, loadTemplates } = useTemplateStore()
   const { recipes } = useRecipeStore()
   const { ingredients } = useIngredientStore()
+  const { checkedItems, toggleItem, clearChecked } = useShoppingListStore()
 
   useEffect(() => {
     loadTemplates()
@@ -79,16 +83,31 @@ export default function ShoppingListPage() {
         purchaseUnitsNeeded: unitsNeeded,
         totalPurchasedAmount,
       }
-    }).filter(Boolean)
-  }, [activePlans, recipes, ingredients])
+    }).filter(Boolean).sort((a: any, b: any) => {
+        // Sort by checked state (unchecked first)
+        const aChecked = checkedItems[a.id] ? 1 : 0
+        const bChecked = checkedItems[b.id] ? 1 : 0
+        if (aChecked !== bChecked) return aChecked - bChecked
+        
+        // Then by name
+        return a.name.localeCompare(b.name)
+    })
+  }, [activePlans, recipes, ingredients, checkedItems])
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Shopping List</h1>
-        <p className="text-muted-foreground">
-          Optimized grocery list based on your <strong>{activePlans.length} active plan(s)</strong>.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Shopping List</h1>
+          <p className="text-muted-foreground">
+            Optimized grocery list based on your <strong>{activePlans.length} active plan(s)</strong>.
+          </p>
+        </div>
+        {Object.values(checkedItems).some(Boolean) && (
+            <Button variant="outline" size="sm" onClick={clearChecked} className="text-muted-foreground">
+                <Trash2 className="w-4 h-4 mr-2" /> Clear Checked
+            </Button>
+        )}
       </div>
 
       {activePlans.length === 0 && (
@@ -118,22 +137,38 @@ export default function ShoppingListPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             {shoppingList.length > 0 ? (
-              shoppingList.map((item: any) => (
+              shoppingList.map((item: any) => {
+                const isChecked = checkedItems[item.id];
+                return (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
+                  onClick={() => toggleItem(item.id)}
+                  className={cn(
+                    "flex items-center justify-between border rounded-lg p-3 transition-all cursor-pointer select-none",
+                    isChecked ? "bg-muted/50 border-muted opacity-60" : "bg-card hover:border-primary/50"
+                  )}
                 >
-                  <div>
-                    <div className="font-semibold text-lg">{item.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      Need: {item.needed.toFixed(0)}
-                      {item.unit}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className={cn(
+                        "h-5 w-5 rounded border flex items-center justify-center transition-colors shrink-0",
+                        isChecked ? "bg-primary border-primary text-primary-foreground" : "border-input bg-background"
+                    )}>
+                        {isChecked && <Check className="h-3.5 w-3.5" />}
+                    </div>
+                    
+                    <div className={cn("flex-1 min-w-0", isChecked && "line-through text-muted-foreground decoration-muted-foreground/50")}>
+                        <div className="font-semibold text-lg leading-none truncate">{item.name}</div>
+                        <div className="text-sm text-muted-foreground mt-1">
+                        Need: {item.needed.toFixed(0)}
+                        {item.unit}
+                        </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <Badge variant="secondary" className="text-sm px-3 py-1">
+                  
+                  <div className={cn("text-right pl-2", isChecked && "opacity-50")}>
+                    <Badge variant={isChecked ? "outline" : "secondary"} className="text-sm px-3 py-1 whitespace-nowrap">
                       {item.purchaseUnitsNeeded} × {item.purchaseUnitName}
                     </Badge>
                     <div className="text-xs text-muted-foreground mt-1">
@@ -142,7 +177,7 @@ export default function ShoppingListPage() {
                     </div>
                   </div>
                 </div>
-              ))
+              )})
             ) : (
               <div className="py-12 text-center">
                 {activePlans.length > 0 ? (
