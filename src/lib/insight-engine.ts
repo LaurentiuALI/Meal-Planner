@@ -17,32 +17,44 @@ export function generatePlanInsights(
   const meals = plan.meals
   if (meals.length === 0) return insights
 
-  // Identify Unique Recipes (Cooking Events)
-  const uniqueRecipeIds = Array.from(new Set(meals.map(m => m.recipeId)))
-  const uniqueRecipes = uniqueRecipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[]
-  
-  const totalMealsCount = meals.length
-  const cookingEventsCount = uniqueRecipes.length
-  const batchRatio = totalMealsCount / cookingEventsCount
+  // Separate cooked meals (recipes) from simple meals (ingredients)
+  const cookedMeals = meals.filter(m => m.recipeId)
+  const simpleMeals = meals.filter(m => m.ingredientId)
 
-  // --- 1. Batch Efficiency (New!) ---
-  if (batchRatio >= 2) {
-      insights.push({
-          type: 'success',
-          title: 'Batch Cooking Master',
-          message: `Excellent! You are averaging ${batchRatio.toFixed(1)} meals per cooking session. This minimizes cleanup and active time.`
-      })
-  } else if (totalMealsCount > 3 && batchRatio < 1.2) {
+  // --- 1. Batch Efficiency (Cooked Meals Only) ---
+  if (cookedMeals.length > 0) {
+      const uniqueRecipeIds = Array.from(new Set(cookedMeals.map(m => m.recipeId)))
+      const cookingEventsCount = uniqueRecipeIds.length
+      const totalCookedCount = cookedMeals.length
+      
+      const batchRatio = totalCookedCount / cookingEventsCount
+
+      if (batchRatio >= 2) {
+          insights.push({
+              type: 'success',
+              title: 'Batch Cooking Master',
+              message: `You're cooking ${cookingEventsCount} recipes to provide ${totalCookedCount} meals. Highly efficient!`
+          })
+      } else if (totalCookedCount > 4 && batchRatio < 1.2) {
+          insights.push({
+              type: 'info',
+              title: 'High Kitchen Time',
+              message: `You are cooking ${totalCookedCount} separate meals from scratch. Try doubling up 1-2 recipes.`
+          })
+      }
+  } else if (simpleMeals.length > 5) {
+      // Mostly ingredients
       insights.push({
           type: 'info',
-          title: 'Low Batch Efficiency',
-          message: `You are cooking almost every meal from scratch. Try making double portions of 1-2 recipes to save time.`
+          title: 'Assembly Only',
+          message: `Your plan relies heavily on raw ingredients. Very fast, but check if you're getting enough warm/satisfying meals.`
       })
   }
 
-  // --- 2. Cookware Overload (Based on Unique Recipes) ---
-  // If I cook Recipe A (Pan) and Recipe B (Pan), that's 2 Pan uses (Cleanups).
-  // If I cook Recipe A (Pan) x 5, that's 1 Pan use.
+  // --- 2. Cookware Overload (Recipes Only) ---
+  const uniqueRecipeIds = Array.from(new Set(cookedMeals.map(m => m.recipeId)))
+  const uniqueRecipes = uniqueRecipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[]
+  
   const toolCounts = new Map<string, number>()
   uniqueRecipes.forEach(r => {
     r.steps.forEach(s => {
@@ -60,25 +72,17 @@ export function generatePlanInsights(
 
   if (overloadedTools.length > 0) {
     insights.push({
-      type: 'error',
-      title: 'Cookware Bottleneck',
-      message: `You need the following tools for ${overloadedTools.length} different recipes: ${overloadedTools.join(', ')}. This means multiple wash cycles. Can you swap one recipe?`
+      type: 'warning',
+      title: 'Heavy Dishwashing',
+      message: `You'll need the ${overloadedTools[0]} for ${toolCounts.get(overloadedTools[0])} different recipes. Plan your wash cycles!`
     })
   }
-  
-  // Total unique tools across the PLAN
-  if (toolCounts.size > 5) {
-      insights.push({
-          type: 'warning',
-          title: 'Too Many Tools',
-          message: `Your plan requires ${toolCounts.size} different tools overall. Aim for recipes that share equipment to simplify your kitchen setup.`
-      })
-  }
 
-  // --- 3. Meat Diversity (Based on Unique Recipes) ---
+  // --- 3. Meat Diversity (Recipes + Ingredients) ---
   const meatKeywords = ['chicken', 'beef', 'pork', 'lamb', 'steak', 'salmon', 'fish', 'tuna', 'turkey', 'shrimp']
   const meatsUsed = new Set<string>()
   
+  // Check recipes
   uniqueRecipes.forEach(r => {
     r.steps.forEach(s => {
         s.ingredients.forEach(ri => {
@@ -92,106 +96,366 @@ export function generatePlanInsights(
         })
     })
   })
+  
+  // Check standalone ingredients (e.g. "Canned Tuna", "Smoked Salmon")
+  simpleMeals.forEach(m => {
+      const ing = allIngredients.find(i => i.id === m.ingredientId)
+      if (ing) {
+          const lowerName = ing.name.toLowerCase()
+          meatKeywords.forEach(meat => {
+              if (lowerName.includes(meat)) meatsUsed.add(meat)
+          })
+      }
+  })
 
-  if (meatsUsed.size > 2) {
+  if (meatsUsed.size > 3) {
     insights.push({
       type: 'warning',
-      title: 'High Meat Variety',
-      message: `You're buying ${meatsUsed.size} different types of meat (${Array.from(meatsUsed).join(', ')}). Buying in bulk is cheaper—try to use the same protein across multiple meals.`
+      title: 'Complex Shopping List',
+      message: `You're buying ${meatsUsed.size} types of protein (${Array.from(meatsUsed).slice(0,3).join(', ')}...). Stick to 1-2 to buy in bulk.`
     })
   }
 
-  // --- 4. Ingredient Efficiency ---
-  const uniqueIngredients = new Set<string>()
-  uniqueRecipes.forEach(r => {
-      r.steps.forEach(s => s.ingredients.forEach(ri => uniqueIngredients.add(ri.ingredientId)))
-  })
-  
-  // Ratio of Unique Ingredients to Total Meals
-  // Lower is better (fewer grocery items feeding more meals)
-  const ingredientEfficiency = uniqueIngredients.size / totalMealsCount
-  
-  if (ingredientEfficiency > 3) { 
-      insights.push({
-          type: 'warning',
-          title: 'Complex Grocery List',
-          message: `You need ${uniqueIngredients.size} unique ingredients for ${totalMealsCount} meals. Simplify your sides to reuse produce.`
-      })
-  }
-
-  // --- 5. Macro Check (Avg of consumed meals) ---
+  // --- 4. Macro Check (Avg of ALL consumed meals) ---
   let totalProtein = 0;
   let totalFiber = 0;
+  let totalMealsCount = 0;
   
-  meals.forEach(m => { // Iterate over MEALS, not recipes, to weight by consumption
-      const r = recipes.find(rec => rec.id === m.recipeId)
-      if (r) {
-        const macros = calculateRecipeMacros(r, allIngredients);
-        totalProtein += macros.protein;
-        totalFiber += macros.fiber;
+  meals.forEach(m => {
+      let itemMacros = null;
+      
+      if (m.recipeId) {
+          const r = recipes.find(rec => rec.id === m.recipeId)
+          if (r) {
+            itemMacros = calculateRecipeMacros(r, allIngredients);
+          }
+      } else if (m.ingredientId && m.ingredientAmount) {
+          const i = allIngredients.find(ing => ing.id === m.ingredientId)
+          if (i) {
+              const ratio = m.ingredientAmount / 100;
+              itemMacros = {
+                  protein: i.macros.protein * ratio,
+                  fiber: i.macros.fiber * ratio,
+                  calories: i.macros.calories * ratio,
+                  carbs: i.macros.carbs * ratio,
+                  fat: i.macros.fat * ratio
+              };
+          }
+      }
+
+      if (itemMacros) {
+          // Weighted by servings
+          totalProtein += itemMacros.protein * m.servings;
+          totalFiber += itemMacros.fiber * m.servings;
+          totalMealsCount += m.servings;
       }
   });
 
-  const avgProtein = totalProtein / totalMealsCount;
-  if (avgProtein < 20) {
-      insights.push({
-          type: 'info',
-          title: 'Low Protein',
-          message: `Your meals average only ${avgProtein.toFixed(0)}g protein. Consider adding a high-protein side.`
-      })
-  }
-  
-  const avgFiber = totalFiber / totalMealsCount;
-  if (avgFiber < 5) {
-      insights.push({
-          type: 'info',
-          title: 'Low Fiber',
-          message: `Your meals average only ${avgFiber.toFixed(0)}g fiber. Add some veggies or legumes.`
-      })
+  if (totalMealsCount > 0) {
+      const avgProtein = totalProtein / totalMealsCount;
+      if (avgProtein < 15) {
+          insights.push({
+              type: 'info',
+              title: 'Low Protein Avg',
+              message: `Meals average ${avgProtein.toFixed(0)}g protein. Aim for >20g to stay full.`
+          })
+      }
+      
+      const avgFiber = totalFiber / totalMealsCount;
+      if (avgFiber < 4) {
+          insights.push({
+              type: 'info',
+              title: 'Low Fiber Avg',
+              message: `Meals average ${avgFiber.toFixed(0)}g fiber. Add veggies or fruit to snacks.`
+          })
+      }
   }
 
   return insights
 }
 
-// Strategy remains mostly the same, but we iterate over UNIQUE recipes to define the "Cooking" steps
+// Strategy: Tool-Centric Aggregation
+
 export function generateCookingStrategy(
+
   plan: DayPlan,
-  recipes: Recipe[]
+
+  recipes: Recipe[],
+
+  allIngredients: Ingredient[]
+
 ): string[] {
+
   const strategy: string[] = []
+
   const meals = plan.meals
-  // Use Unique Recipes for Cooking Steps
-  const uniqueRecipeIds = Array.from(new Set(meals.map(m => m.recipeId)))
-  const uniqueRecipes = uniqueRecipeIds.map(id => recipes.find(r => r.id === id)).filter(Boolean) as Recipe[]
+
   
+
+  // 1. Identify Unique Recipes & Scale
+
+  // We need to know the TOTAL servings required for each recipe across the plan
+
+  const recipeServings = new Map<string, number>()
+
+  meals.forEach(m => {
+
+      if (m.recipeId) {
+
+          recipeServings.set(m.recipeId, (recipeServings.get(m.recipeId) || 0) + m.servings)
+
+      }
+
+  })
+
+
+
+  const uniqueRecipes = Array.from(recipeServings.keys())
+
+    .map(id => recipes.find(r => r.id === id))
+
+    .filter(Boolean) as Recipe[]
+
+  
+
   if (uniqueRecipes.length === 0) return ["Add meals to generate a strategy."]
 
-  const slowMethods = ['slow cooker', 'oven', 'roast', 'bake', 'stew', 'braise']
-  
-  // Categorize
-  const ovenMeals = uniqueRecipes.filter(r => r.method.some(m => slowMethods.some(sm => m.toLowerCase().includes(sm))))
-  const stoveMeals = uniqueRecipes.filter(r => !ovenMeals.includes(r))
 
-  strategy.push(`**Step 1: The Batch Bake**`)
-  if (ovenMeals.length > 0) {
-    strategy.push(`- Preheat oven immediately.`)
-    ovenMeals.forEach(r => {
-      strategy.push(`- Prep and start **${r.name}** (${r.method.join(', ')}).`)
-    })
-  } else {
-    strategy.push(`- No long-cook meals. Jump to stove work.`)
+
+  // 2. Aggregate Tasks by Tool
+
+  // Map<ToolName, Array<{ ingredientName, amount, unit, recipeName }>>
+
+  const toolTasks = new Map<string, any[]>()
+
+  const prepTasks: any[] = []
+
+
+
+  uniqueRecipes.forEach(recipe => {
+
+      const totalServings = recipeServings.get(recipe.id) || 1;
+
+      // Heuristic: Base recipe is usually for ~4 servings. 
+
+      // If we don't have base servings in DB, assume 1 serving = 1/4 of recipe? 
+
+      // OR assume DB recipe amounts are for "1 batch". 
+
+      // Let's assume the amounts in RecipeIngredient are for ONE Serving for now, or scaled to servings.
+
+      // Actually, standard usually is Recipe = Fixed Yield (e.g. 4). 
+
+      // Let's assume amounts are BASE amounts. We multiply by (totalServings).
+
+      
+
+      recipe.steps.forEach(step => {
+
+          const tools = step.tools;
+
+          
+
+          step.ingredients.forEach(ri => {
+
+              const ing = allIngredients.find(i => i.id === ri.ingredientId);
+
+              if (!ing) return;
+
+
+
+              const task = {
+
+                  ingredient: ing.name,
+
+                  amount: ri.amount * totalServings, // Scale to total plan need
+
+                  unit: ing.unit,
+
+                  recipe: recipe.name,
+
+                  stepDesc: step.description
+
+              };
+
+
+
+              if (tools.length === 0) {
+
+                  // Implicit Prep (Knife/Board)
+
+                  prepTasks.push(task);
+
+              } else {
+
+                  tools.forEach(tool => {
+
+                      const existing = toolTasks.get(tool.name) || [];
+
+                      existing.push(task);
+
+                      toolTasks.set(tool.name, existing);
+
+                  });
+
+              }
+
+          });
+
+      });
+
+  });
+
+
+
+  // 3. Generate Phases
+
+
+
+  // Phase 1: Smart Prep (Aggregated Chopping)
+
+  if (prepTasks.length > 0) {
+
+      strategy.push(`**Phase 1: Mise en Place (Prep)**`);
+
+      
+
+      // Group by Ingredient (e.g. "Onion")
+
+      const groupedPrep = new Map<string, { amount: number, unit: string, recipes: Set<string> }>();
+
+      
+
+      prepTasks.forEach(t => {
+
+          const key = t.ingredient; // Simple name match
+
+          const entry = groupedPrep.get(key) || { amount: 0, unit: t.unit, recipes: new Set() };
+
+          entry.amount += t.amount;
+
+          entry.recipes.add(t.recipe);
+
+          groupedPrep.set(key, entry);
+
+      });
+
+
+
+      groupedPrep.forEach((data, name) => {
+
+          const recipeList = Array.from(data.recipes).join(', ');
+
+          strategy.push(`- Prep **${data.amount.toFixed(0)}${data.unit} ${name}** (for ${recipeList}).`);
+
+      });
+
   }
 
-  strategy.push(`**Step 2: Stovetop & Chop**`)
-  strategy.push(`- While oven works, chop vegetables for: ${stoveMeals.map(r => r.name).join(', ') || "remaining meals"}.`)
-  stoveMeals.forEach(r => {
-      strategy.push(`- Batch cook **${r.name}**.`)
-  })
+
+
+  // Phase 2: Tool Batching (The "Oala" Logic)
+
+  strategy.push(`**Phase 2: Hot Stations**`);
+
   
-  strategy.push(`**Step 3: Assembly Line**`)
-  strategy.push(`- Lay out ${meals.length} containers.`)
-  strategy.push(`- Portion out meals.`)
-  strategy.push(`- **Cooling Tip:** Let food cool to room temp before sealing lids.`)
+
+  // Sort tools to prioritize "Passive" (Oven) before "Active" (Pan)
+
+  // Heuristic: Oven/Slow Cooker first.
+
+  const slowTools = ['oven', 'slow cooker', 'roaster', 'crockpot'];
+
+  const sortedTools = Array.from(toolTasks.keys()).sort((a, b) => {
+
+      const aSlow = slowTools.some(s => a.toLowerCase().includes(s));
+
+      const bSlow = slowTools.some(s => b.toLowerCase().includes(s));
+
+      return (aSlow === bSlow) ? 0 : aSlow ? -1 : 1;
+
+  });
+
+
+
+  sortedTools.forEach(toolName => {
+
+      const tasks = toolTasks.get(toolName) || [];
+
+      
+
+      // Check for MERGEABLE tasks (Same ingredient in same tool)
+
+      // e.g. Rice in Pot for Recipe A, Rice in Pot for Recipe B
+
+      const mergedTasks = new Map<string, { amount: number, unit: string, recipes: Set<string> }>();
+
+      
+
+      tasks.forEach(t => {
+
+          // Key by ingredient name to merge "Rice" with "Rice"
+
+          const key = t.ingredient;
+
+          const entry = mergedTasks.get(key) || { amount: 0, unit: t.unit, recipes: new Set() };
+
+          entry.amount += t.amount;
+
+          entry.recipes.add(t.recipe);
+
+          mergedTasks.set(key, entry);
+
+      });
+
+
+
+      // Output for this Tool
+
+      const actions: string[] = [];
+
+      mergedTasks.forEach((data, ingName) => {
+
+          if (data.recipes.size > 1) {
+
+              // It's a BATCH!
+
+              actions.push(`**BATCH COOK**: ${data.amount.toFixed(0)}${data.unit} **${ingName}** (for ${Array.from(data.recipes).join(' & ')}).`);
+
+          } else {
+
+              // Single recipe use
+
+              actions.push(`Cook ${data.amount.toFixed(0)}${data.unit} ${ingName} (for ${Array.from(data.recipes)[0]}).`);
+
+          }
+
+      });
+
+
+
+      if (actions.length > 0) {
+
+          strategy.push(`*Station: ${toolName}*`);
+
+          actions.forEach(a => strategy.push(`- ${a}`));
+
+      }
+
+  });
+
+  
+
+  strategy.push(`**Phase 3: Assembly**`);
+
+  strategy.push(`- Portion out all ${meals.length} meals into containers.`);
+
+  strategy.push(`- Allow to cool before refrigerating.`);
+
+
 
   return strategy
+
 }
+
+

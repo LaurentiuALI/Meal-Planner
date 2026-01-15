@@ -13,9 +13,9 @@ import { Calendar, Plus, CheckCircle2, ChevronRight, BarChart3 } from 'lucide-re
 import { TemplateDayCard } from './template-day-card';
 import { ApplyPlanDialog } from './apply-plan-dialog';
 import { EfficiencyScore } from './efficiency-score';
-import { InsightPanel } from './insight-panel';
+import { InsightPanel } from '@/components/plan/InsightPanel';
 import { useDebounce } from '@/hooks/use-debounce';
-import { generatePlanInsights } from '@/lib/insight-engine';
+import { generatePlanInsights, generateCookingStrategy } from '@/lib/insight-engine';
 import { calculateRecipeMacros, evaluateRecipeBadges } from '@/lib/badges';
 import { 
   DndContext, 
@@ -89,60 +89,137 @@ export function TemplateEditor({ template, mobileNavTrigger }: TemplateEditorPro
   }, [loadSlots]);
 
   // Analysis State (Derived)
-  const { insights, score } = useMemo(() => {
-    if (debouncedTemplate.days.length === 0) return { insights: [], score: 0 };
+  const { insights, strategy, score } = useMemo(() => {
+    if (debouncedTemplate.days.length === 0) return { insights: [], strategy: [], score: 0 };
     
-    // 1. Aggregate all meals from the template
-    // We map TemplateMeal to the structure expected by analysis (Meal)
-    const allMeals = debouncedTemplate.days.flatMap(day => 
-        day.meals.map(tm => ({
-            id: tm.id,
-            planId: 'temp',
-            recipeId: tm.recipeId,
-            servings: tm.servings,
-            sortOrder: tm.sortOrder,
-            slotName: tm.slotName
-        }))
-    );
-
-    const fakePlan = {
-        id: 'template-analysis',
-        date: new Date().toISOString(),
-        meals: allMeals
-    } as unknown as import('@/types').DayPlan;
-
-    // 2. Generate Insights
-    const generatedInsights = generatePlanInsights(fakePlan, recipes, ingredients);
-
-    // 3. Calculate Score
-    let calcScore = 100;
+            // 1. Aggregate all meals from the template
+            // We map TemplateMeal to the structure expected by analysis (Meal)
+            const allMeals = debouncedTemplate.days.flatMap(day =>
+                day.meals.map(tm => ({
+                    id: tm.id,
+                    planId: 'temp',
+                    recipeId: tm.recipeId,
+                    ingredientId: tm.ingredientId,
+                    ingredientAmount: tm.ingredientAmount,
+                    // We need to attach the full objects if available for the engine to work without lookups if possible, 
+                    // but the engine currently takes (plan, recipes, ingredients) as args.
+                    // However, for pure ingredient calculations in the engine, passing the ID is enough as it has the 'ingredients' list.
+                    servings: tm.servings,
+                    sortOrder: tm.sortOrder,
+                    slotName: tm.slotName
+                }))
+            );
     
-    // Badge Impact
-    allMeals.forEach(m => {
-        const recipe = recipes.find(r => r.id === m.recipeId);
-        if (recipe) {
-            const macros = calculateRecipeMacros(recipe, ingredients);
-            const badges = evaluateRecipeBadges(recipe, macros);
+            const fakePlan = {
+                id: 'template-analysis',
+                date: new Date().toISOString(),
+                meals: allMeals
+            } as unknown as import('@/types').DayPlan;
+    
+                            // 2. Generate Insights & Strategy
+    
+                            const generatedInsights = generatePlanInsights(fakePlan, recipes, ingredients);
+    
+                            const generatedStrategy = generateCookingStrategy(fakePlan, recipes, ingredients);
+    
+                    
+    
+                            // 3. Calculate Score (Weighted Model)
+            // Base score starts at 75 (Good). We adjust based on optimization factors.
+            let calcScore = 75;
             
-            badges.forEach(b => {
-                if (b.type === 'error' || b.type === 'warning') calcScore -= 5;
-                if (b.type === 'success') calcScore += 2;
+            // A. Batch Cooking Efficiency (Recipes)
+            const cookedMeals = allMeals.filter(m => m.recipeId);
+            const uniqueRecipes = new Set(cookedMeals.map(m => m.recipeId));
+            
+            if (cookedMeals.length > 0) {
+                const batchRatio = cookedMeals.length / uniqueRecipes.size;
+                if (batchRatio >= 2.0) calcScore += 15; // Excellent batching
+                else if (batchRatio >= 1.5) calcScore += 5; // Good batching
+                else if (cookedMeals.length > 4 && batchRatio < 1.2) calcScore -= 10; // Cooking every single meal
+            } else if (allMeals.length > 0) {
+                // All ingredients (snack plan?) -> Very efficient time-wise!
+                calcScore += 10;
+            }
+    
+            // B. Macro Balance & Badges
+            let totalProtein = 0;
+            let totalFiber = 0;
+            let count = 0;
+    
+            allMeals.forEach(m => {
+                let itemMacros = null;
+                let itemBadges: import('@/types').Badge[] = [];
+    
+                if (m.recipeId) {
+                    const recipe = recipes.find(r => r.id === m.recipeId);
+                    if (recipe) {
+                        const macros = calculateRecipeMacros(recipe, ingredients);
+                        itemMacros = macros;
+                        itemBadges = evaluateRecipeBadges(recipe, macros);
+                    }
+                } else if (m.ingredientId) {
+                    const ing = ingredients.find(i => i.id === m.ingredientId);
+                    if (ing && m.ingredientAmount) {
+                        // Calculate raw macros for this amount
+                        const ratio = m.ingredientAmount / 100;
+                        itemMacros = {
+                            protein: ing.macros.protein * ratio,
+                            fiber: ing.macros.fiber * ratio,
+                            calories: ing.macros.calories * ratio,
+                            carbs: ing.macros.carbs * ratio,
+                            fat: ing.macros.fat * ratio
+                        };
+                        // No badges for raw ingredients usually, or we could add simple ones
+                    }
+                }
+    
+                if (itemMacros) {
+                    // Weight by servings
+                    totalProtein += itemMacros.protein * m.servings;
+                    totalFiber += itemMacros.fiber * m.servings;
+                    count += m.servings; // Use servings as weight
+                }
+    
+                // Badge Impact (Recipes only usually)
+                itemBadges.forEach(b => {
+                    if (b.type === 'error') calcScore -= 3;
+                    if (b.type === 'warning') calcScore -= 1;
+                    if (b.type === 'success') calcScore += 1;
+                });
             });
-        }
-    });
-
-    // Insight Impact
-    generatedInsights.forEach(i => {
-        if (i.type === 'error') calcScore -= 10;
-        if (i.type === 'warning') calcScore -= 5;
-    });
-
-    return { 
-        insights: generatedInsights, 
-        score: Math.max(0, Math.min(100, calcScore)) 
-    };
-
-  }, [debouncedTemplate, recipes, ingredients]);
+    
+            // C. Macro Targets (Avg per serving)
+            if (count > 0) {
+                const avgProtein = totalProtein / count;
+                const avgFiber = totalFiber / count;
+    
+                if (avgProtein > 25) calcScore += 10;
+                else if (avgProtein < 15) calcScore -= 5;
+    
+                if (avgFiber > 8) calcScore += 5;
+                else if (avgFiber < 3) calcScore -= 5;
+            }
+    
+            // D. Critical Insights Penalties
+            generatedInsights.forEach(i => {
+                if (i.type === 'error') calcScore -= 10;
+                if (i.type === 'warning') calcScore -= 5;
+            });
+    
+                    return { 
+    
+                        insights: generatedInsights, 
+    
+                        strategy: generatedStrategy,
+    
+                        score: Math.max(0, Math.min(100, Math.round(calcScore))) 
+    
+                    };
+    
+            
+    
+              }, [debouncedTemplate, recipes, ingredients]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -284,7 +361,7 @@ export function TemplateEditor({ template, mobileNavTrigger }: TemplateEditorPro
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
                         <EfficiencyScore score={score} />
                         <div className="md:col-span-3">
-                            <InsightPanel insights={insights} />
+                            <InsightPanel insights={insights} cookingStrategy={strategy} />
                         </div>
                     </div>
                 </details>
@@ -358,11 +435,10 @@ export function TemplateEditor({ template, mobileNavTrigger }: TemplateEditorPro
                             <DrawerTitle>Plan Efficiency: {score}%</DrawerTitle>
                             <DrawerDescription>Review AI-generated insights for your meal plan.</DrawerDescription>
                         </DrawerHeader>
-                        <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
-                            <EfficiencyScore score={score} />
-                            <InsightPanel insights={insights} />
-                        </div>
-                        <DrawerFooter>
+                                                        <div className="p-4 space-y-4 max-h-[60vh] overflow-y-auto">
+                                                            <EfficiencyScore score={score} />
+                                                            <InsightPanel insights={insights} cookingStrategy={strategy} />
+                                                        </div>                        <DrawerFooter>
                             <DrawerClose asChild>
                                 <Button variant="outline">Close</Button>
                             </DrawerClose>

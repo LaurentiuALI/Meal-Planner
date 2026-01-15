@@ -1,6 +1,9 @@
 "use client"
 
-import { AlertCircle, CheckCircle2, Info } from "lucide-react"
+import { useState } from "react"
+import { AlertCircle, CheckCircle2, Info, ChevronDown, ChevronUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface Insight {
   type: 'warning' | 'info' | 'success' | 'error';
@@ -14,6 +17,8 @@ interface InsightPanelProps {
 }
 
 export function InsightPanel({ insights, cookingStrategy }: InsightPanelProps) {
+  const [isStrategyOpen, setIsStrategyOpen] = useState(false);
+
   if (insights.length === 0 && (!cookingStrategy || cookingStrategy.length === 0)) return null
 
   return (
@@ -54,16 +59,47 @@ export function InsightPanel({ insights, cookingStrategy }: InsightPanelProps) {
       </div>
 
       {cookingStrategy && cookingStrategy.length > 0 && (
-        <div className="rounded-lg border bg-white p-4">
-          <h3 className="font-semibold mb-2 flex items-center gap-2">
-             👨‍🍳 Chef&apos;s Strategy
-          </h3>
-          <div className="text-sm space-y-2 text-muted-foreground">
-            {cookingStrategy.map((step, i) => (
-               <div key={i} dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }} />
-            ))}
-          </div>
-        </div>
+        <Collapsible
+            open={isStrategyOpen}
+            onOpenChange={setIsStrategyOpen}
+            className="rounded-lg border bg-white overflow-hidden"
+        >
+            <div className="flex items-center justify-between p-4 bg-muted/10">
+                <h3 className="font-semibold flex items-center gap-2">
+                    👨‍🍳 Chef&apos;s Strategy
+                </h3>
+                <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-9 p-0">
+                        {isStrategyOpen ? (
+                            <ChevronUp className="h-4 w-4" />
+                        ) : (
+                            <ChevronDown className="h-4 w-4" />
+                        )}
+                        <span className="sr-only">Toggle</span>
+                    </Button>
+                </CollapsibleTrigger>
+            </div>
+            
+            <CollapsibleContent>
+                <div className="p-4 pt-0 text-sm space-y-2 text-muted-foreground border-t bg-card">
+                    {cookingStrategy.map((step, i) => (
+                    <div key={i} className="py-1" dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>') }} />
+                    ))}
+                </div>
+            </CollapsibleContent>
+            
+            {!isStrategyOpen && (
+                 <div 
+                    className="px-4 pb-4 pt-0 text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => setIsStrategyOpen(true)}
+                 >
+                     <p className="line-clamp-2 opacity-70 italic">
+                        {cookingStrategy[0].replace(/\*\*/g, '')}...
+                     </p>
+                     <div className="text-xs text-primary mt-1 font-medium">Click to view full plan ({cookingStrategy.length} steps)</div>
+                 </div>
+            )}
+        </Collapsible>
       )}
     </div>
   )

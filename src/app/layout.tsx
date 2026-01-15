@@ -34,9 +34,7 @@ export default function RootLayout({
         <div className="relative flex min-h-screen flex-col">
           <Navbar />
           <main className="flex-1 pb-16 md:pb-0">
-            <div className="container mx-auto py-6 px-4">
-              {children}
-            </div>
+            {children}
           </main>
           <MobileNav />
         </div>

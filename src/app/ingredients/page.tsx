@@ -86,7 +86,7 @@ export default function IngredientsPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6 px-4 space-y-6">
       <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Ingredients</h1>

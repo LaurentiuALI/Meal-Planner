@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { TemplateMeal } from '@/types';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { Card } from '@/components/ui/card';
@@ -33,7 +33,6 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    // Removed global touchAction: 'none' to allow scrolling on the card body
   };
 
   const recipe = meal.recipe;
@@ -135,41 +134,74 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
 
   const itemName = recipe ? recipe.name : ingredient ? ingredient.name : 'Unknown';
 
+  // Local component for debounced input to avoid re-renders of the whole card
+  const DebouncedInput = ({ value, onChange, className }: { value: number, onChange: (val: string) => void, className?: string }) => {
+    const [localValue, setLocalValue] = useState(value.toString());
+
+    useEffect(() => {
+        setLocalValue(value.toString());
+    }, [value]);
+
+    const handleBlur = () => {
+        if (localValue !== value.toString()) {
+            onChange(localValue);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            (e.currentTarget as HTMLInputElement).blur();
+        }
+    };
+
+    return (
+        <Input 
+            className={className}
+            type="number"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            onFocus={(e) => e.target.select()}
+        />
+    );
+};
+
   return (
-    <div ref={setNodeRef} style={style} {...attributes} className="touch-none"> {/* touch-none on wrapper to be safe, but specific handle is better */}
+    <div ref={setNodeRef} style={style} {...attributes} className="touch-none"> 
         <Card className={cn(
             "relative group bg-background transition-all overflow-hidden",
             isOpen ? "ring-2 ring-primary/10" : "hover:shadow-sm"
         )}>
             {/* Header / Summary View */}
             <div 
-                className="p-2 flex items-start gap-2"
+                className="p-3 flex items-start gap-3"
             >
                 {/* Drag Handle */}
                 <div className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none" {...listeners}>
-                    <GripVertical className="w-4 h-4" />
+                    <GripVertical className="w-5 h-5" />
                 </div>
 
                 <div 
                     className="flex-1 min-w-0 cursor-pointer"
                     onClick={() => setIsOpen(!isOpen)}
                 >
-                    <div className="flex items-center justify-between pr-6">
-                         <span className="text-sm font-medium truncate">{itemName}</span>
+                    <div className="flex items-center justify-between pr-8">
+                         <span className="text-base font-medium truncate">{itemName}</span>
                     </div>
                    
-                    <div className="text-xs text-muted-foreground mt-0.5 flex gap-2">
-                         <span>{meal.servings} srv</span>
-                         {isOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    <div className="text-sm text-muted-foreground mt-1 flex gap-2 items-center">
+                         <span className="bg-secondary px-1.5 rounded text-xs">{meal.servings} srv</span>
+                         {isOpen ? <ChevronUp className="w-4 h-4 opacity-50" /> : <ChevronDown className="w-4 h-4 opacity-50" />}
                     </div>
 
                     {macros && (
-                        <div className="flex gap-2 mt-1 text-[10px] text-muted-foreground font-mono">
-                            <span>{macros.cal}kcal</span>
-                            <span className="text-blue-500">P:{macros.p}</span>
-                            <span className="text-amber-500">C:{macros.c}</span>
-                            <span className="text-emerald-500">F:{macros.f}</span>
-                            <span className="text-green-600">Fib:{macros.fib}</span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground font-medium">
+                            <span>{macros.cal} kcal</span>
+                            <span className="text-blue-600">P: {macros.p}g</span>
+                            <span className="text-amber-600">C: {macros.c}g</span>
+                            <span className="text-emerald-600">F: {macros.f}g</span>
+                            <span className="text-green-700">Fib: {macros.fib}g</span>
                         </div>
                     )}
                 </div>
@@ -177,27 +209,27 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                  <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="absolute top-1 right-1 h-6 w-6 text-muted-foreground hover:text-destructive transition-colors z-10"
+                    className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-destructive transition-colors z-10"
                     onClick={(e) => {
                         e.stopPropagation();
                         deleteMeal(meal.id);
                     }}
                     onPointerDown={(e) => e.stopPropagation()}
                 >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4" />
                 </Button>
             </div>
 
             {/* Expanded Details */}
             {isOpen && (
                 <div 
-                    className="px-2 pb-2 pt-0 space-y-3 border-t bg-muted/10"
-                    onPointerDown={(e) => e.stopPropagation()} // Prevent drag start from inside details
+                    className="px-3 pb-3 pt-0 space-y-4 border-t bg-muted/10"
+                    onPointerDown={(e) => e.stopPropagation()} 
                     onClick={(e) => e.stopPropagation()}
                 >
                     {/* Ingredients List */}
-                    <div className="space-y-1 mt-2">
-                        <Label className="text-xs text-muted-foreground">Ingredients (per 1 serving)</Label>
+                    <div className="space-y-2 mt-3">
+                        <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ingredients (per 1 serving)</Label>
                         {ingredients.map(ing => {
                             let currentAmount = ing.baseAmount;
                             let isModified = false;
@@ -211,20 +243,19 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                             }
 
                             return (
-                                <div key={ing.id + ing.stepId} className="flex items-center justify-between text-xs gap-2">
-                                    <span className="truncate flex-1">{ing.name}</span>
-                                    <div className="flex items-center gap-1 w-24">
-                                        <Input 
-                                            className={cn("h-6 text-xs px-1 text-right", isModified && "border-amber-500 text-amber-600 font-medium")}
-                                            type="number"
+                                <div key={ing.id + ing.stepId} className="flex items-center justify-between text-sm gap-3">
+                                    <span className="truncate flex-1 text-muted-foreground">{ing.name}</span>
+                                    <div className="flex items-center gap-2 w-28 justify-end">
+                                        <DebouncedInput 
+                                            className={cn("h-7 text-sm px-2 text-right w-16", isModified && "border-amber-500 text-amber-600 font-medium")}
                                             value={currentAmount}
-                                            onChange={(e) => handleIngredientChange(ing.id, e.target.value)}
+                                            onChange={(val) => handleIngredientChange(ing.id, val)}
                                         />
-                                        <span className="w-6 text-muted-foreground">{ing.unit}</span>
+                                        <span className="w-8 text-xs text-muted-foreground text-right">{ing.unit}</span>
                                     </div>
                                     {isModified && recipe && (
                                          <Button 
-                                            variant="ghost" size="icon" className="h-5 w-5 shrink-0"
+                                            variant="ghost" size="icon" className="h-6 w-6 shrink-0 -mr-1"
                                             title="Reset to recipe default"
                                             onClick={(e) => resetIngredient(ing.id, e)}
                                         >
@@ -238,11 +269,11 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
 
                     {/* Tools List */}
                     {tools.length > 0 && (
-                        <div className="space-y-1">
-                             <Label className="text-xs text-muted-foreground">Tools</Label>
-                             <div className="flex flex-wrap gap-1">
+                        <div className="space-y-2">
+                             <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Tools</Label>
+                             <div className="flex flex-wrap gap-1.5">
                                 {tools.map(tool => (
-                                    <span key={tool.id} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-secondary text-secondary-foreground">
+                                    <span key={tool.id} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-background border text-foreground shadow-sm">
                                         {tool.name}
                                     </span>
                                 ))}

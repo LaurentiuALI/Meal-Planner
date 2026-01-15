@@ -107,7 +107,7 @@ export default function Dashboard() {
   }, [plans, templates, recipes, ingredients])
 
   return (
-    <div className="space-y-8">
+    <div className="container mx-auto py-6 px-4 space-y-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-4xl font-extrabold tracking-tight lg:text-5xl">
           Welcome back!
