@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, RotateCcw, GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -33,7 +33,7 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    touchAction: 'none' as React.CSSProperties['touchAction'],
+    // Removed global touchAction: 'none' to allow scrolling on the card body
   };
 
   const recipe = meal.recipe;
@@ -136,17 +136,24 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
   const itemName = recipe ? recipe.name : ingredient ? ingredient.name : 'Unknown';
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} className="touch-none"> {/* touch-none on wrapper to be safe, but specific handle is better */}
         <Card className={cn(
             "relative group bg-background transition-all overflow-hidden",
             isOpen ? "ring-2 ring-primary/10" : "hover:shadow-sm"
         )}>
             {/* Header / Summary View */}
             <div 
-                className="p-2 cursor-pointer flex items-start gap-2"
-                onClick={() => setIsOpen(!isOpen)}
+                className="p-2 flex items-start gap-2"
             >
-                <div className="flex-1 min-w-0">
+                {/* Drag Handle */}
+                <div className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground touch-none" {...listeners}>
+                    <GripVertical className="w-4 h-4" />
+                </div>
+
+                <div 
+                    className="flex-1 min-w-0 cursor-pointer"
+                    onClick={() => setIsOpen(!isOpen)}
+                >
                     <div className="flex items-center justify-between pr-6">
                          <span className="text-sm font-medium truncate">{itemName}</span>
                     </div>
@@ -201,9 +208,6 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
                                     currentAmount = override.amount;
                                     isModified = true;
                                 }
-                            } else {
-                                // For standalone, we are always editing the "base", so no "modified" state relative to base.
-                                // But maybe we want to show it's editable.
                             }
 
                             return (

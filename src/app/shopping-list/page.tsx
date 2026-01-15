@@ -42,7 +42,15 @@ export default function ShoppingListPage() {
                       aggregates[ri.ingredientId] = (aggregates[ri.ingredientId] || 0) + amount
                    })
                 });
-             } else {
+             }
+             
+             // Also check for standalone ingredient
+             if (meal.ingredientId && meal.ingredientAmount) {
+                 const amount = meal.ingredientAmount * (meal.servings || 1);
+                 aggregates[meal.ingredientId] = (aggregates[meal.ingredientId] || 0) + amount;
+             }
+             
+             if (!recipe && !meal.ingredientId) {
                  // Fallback if recipe not populated in template object (should be)
                  // Try looking up in recipe store?
                  const r = recipes.find(x => x.id === meal.recipeId);

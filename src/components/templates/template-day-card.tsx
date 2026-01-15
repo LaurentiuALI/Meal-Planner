@@ -14,10 +14,13 @@ import { FoodSelectorDialog } from './food-selector-dialog';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { cn } from '@/lib/utils';
+import { ProgressCircle } from '@/components/ui/progress-circle';
 
 interface TemplateDayCardProps {
   day: TemplateDay;
   slots: Slot[];
+  mode?: 'desktop' | 'mobile';
+  className?: string;
 }
 
 function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: string, meals: TemplateMeal[], onAddMeal: () => void }) {
@@ -57,7 +60,7 @@ function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: s
     );
 }
 
-export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
+export function TemplateDayCard({ day, slots, mode = 'desktop', className }: TemplateDayCardProps) {
   const { updateDay, deleteDay, addMeal, addIngredient } = useTemplateStore();
   const [isFoodSelectorOpen, setIsFoodSelectorOpen] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -140,11 +143,6 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
   };
 
   // Group meals by slot
-  // Also handle meals with unknown slots (put them in first slot or a generic "Other")
-  // For now, assume if slotName matches a slot.name, it goes there.
-  // If not, put in "Other" or append to first slot?
-  // Let's create buckets.
-  
   const slotMap = new Map<string, TemplateMeal[]>();
   slots.forEach(s => slotMap.set(s.name, []));
   const otherMeals: TemplateMeal[] = [];
@@ -163,8 +161,11 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
   });
 
   return (
-    <Card className="w-[85vw] md:w-80 h-full flex flex-col shrink-0 bg-card shadow-sm border-border/50">
-      <CardHeader className="pb-2 space-y-1">
+    <Card className={cn("flex flex-col shrink-0 bg-card shadow-sm border-border/50 h-full", 
+        mode === 'desktop' ? "w-[85vw] md:w-80" : "w-full border-0 shadow-none bg-transparent", 
+        className
+    )}>
+      <CardHeader className={cn("space-y-1", mode === 'mobile' ? "px-0 pb-2 pt-0" : "pb-2")}>
         <div className="flex items-center justify-between">
           {editingName ? (
             <Input 
@@ -177,7 +178,7 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
             />
           ) : (
             <h3 
-              className="font-semibold cursor-pointer hover:underline decoration-dashed"
+              className={cn("font-semibold cursor-pointer hover:underline decoration-dashed", mode === 'mobile' ? "text-lg" : "")}
               onClick={() => setEditingName(true)}
             >
               {day.name}
@@ -261,17 +262,29 @@ export function TemplateDayCard({ day, slots }: TemplateDayCardProps) {
           </div>
         </div>
 
-        {/* Progress Bars */}
-        <div className="space-y-1 pt-2">
-           <MacroBar label="Kcal" value={totals.calories} target={day.targetCalories || 2000} color="bg-slate-500" />
-           <MacroBar label="Prot" value={totals.protein} target={day.targetProtein || 150} color="bg-blue-500" />
-           <MacroBar label="Carb" value={totals.carbs} target={day.targetCarbs || 200} color="bg-amber-500" />
-           <MacroBar label="Fat" value={totals.fat} target={day.targetFat || 60} color="bg-emerald-500" />
-           <MacroBar label="Fiber" value={totals.fiber} target={day.targetFiber || 30} color="bg-green-600" />
+        {/* Progress Bars / Circles */}
+        <div className={cn("pt-2", mode === 'mobile' ? "flex justify-between px-2" : "space-y-1")}>
+           {mode === 'mobile' ? (
+             <>
+               <ProgressCircle label="Kcal" value={totals.calories} max={day.targetCalories || 2000} color="text-slate-500" size={56} strokeWidth={5} />
+               <ProgressCircle label="Prot" value={totals.protein} max={day.targetProtein || 150} color="text-blue-500" size={56} strokeWidth={5} />
+               <ProgressCircle label="Carb" value={totals.carbs} max={day.targetCarbs || 200} color="text-amber-500" size={56} strokeWidth={5} />
+               <ProgressCircle label="Fat" value={totals.fat} max={day.targetFat || 60} color="text-emerald-500" size={56} strokeWidth={5} />
+               <ProgressCircle label="Fib" value={totals.fiber} max={day.targetFiber || 30} color="text-green-600" size={56} strokeWidth={5} />
+             </>
+           ) : (
+             <>
+               <MacroBar label="Kcal" value={totals.calories} target={day.targetCalories || 2000} color="bg-slate-500" />
+               <MacroBar label="Prot" value={totals.protein} target={day.targetProtein || 150} color="bg-blue-500" />
+               <MacroBar label="Carb" value={totals.carbs} target={day.targetCarbs || 200} color="bg-amber-500" />
+               <MacroBar label="Fat" value={totals.fat} target={day.targetFat || 60} color="bg-emerald-500" />
+               <MacroBar label="Fiber" value={totals.fiber} target={day.targetFiber || 30} color="bg-green-600" />
+             </>
+           )}
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto p-2 space-y-3">
+      <CardContent className={cn("flex-1 overflow-y-auto p-2 space-y-3", mode === 'mobile' ? "px-0 pb-32" : "")}>
         {slots.map(slot => (
             <SlotContainer 
                 key={slot.id} 
@@ -318,4 +331,3 @@ function MacroBar({ label, value, target, color }: { label: string, value: numbe
     </div>
   )
 }
-
