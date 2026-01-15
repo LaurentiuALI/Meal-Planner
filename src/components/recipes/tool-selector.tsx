@@ -11,7 +11,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from '@/components/ui/command';
 import {
   Popover,
@@ -86,7 +85,7 @@ export function ToolSelector({ selectedIds, onChange }: ToolSelectorProps) {
                     onSelect={() => handleCreate()}
                     className="font-semibold text-primary"
                   >
-                    <Plus className="mr-2 h-4 w-4" /> Create "{inputValue}"
+                    <Plus className="mr-2 h-4 w-4" /> Create &quot;{inputValue}&quot;
                   </CommandItem>
                 )}
                 {tools.map((tool) => (

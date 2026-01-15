@@ -59,8 +59,8 @@ export async function POST(req: Request) {
       },
     })
 
-  } catch (error: any) {
+  } catch (error) {
      console.error("API Error:", error)
-     return new NextResponse(JSON.stringify({ error: error.message }), { status: 500 })
+     return new NextResponse(JSON.stringify({ error: (error as Error).message }), { status: 500 })
   }
 }

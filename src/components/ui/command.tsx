@@ -21,7 +21,7 @@ const Command = React.forwardRef<
 ))
 Command.displayName = CommandPrimitive.displayName
 
-const CommandDialog = ({ children, ...props }: any) => {
+const CommandDialog = ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   return (
     <div {...props}>{children}</div>
   )

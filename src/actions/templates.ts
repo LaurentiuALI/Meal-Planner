@@ -18,8 +18,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
           meals: {
             orderBy: { sortOrder: 'asc' },
             include: {
-              // @ts-ignore: Prisma client types might be out of sync
-              ingredient: true,
+                ingredient: true,
               recipe: {
                 include: {
                   steps: {
@@ -89,11 +88,11 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
           id: m.recipe.id,
           name: m.recipe.name,
           method: [], // JSON parse if needed, usually simple array
-          steps: m.recipe.steps.map(s => ({
+          steps: m.recipe.steps.map((s: any) => ({
              id: s.id,
              description: s.description,
              sortOrder: s.sortOrder,
-             ingredients: s.ingredients.map(ri => ({
+             ingredients: s.ingredients.map((ri: any) => ({
                 ingredientId: ri.ingredientId,
                 amount: ri.amount,
                 ingredient: {
@@ -114,7 +113,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
                     barcodes: []
                 }
              })),
-             tools: s.tools.map(st => st.tool)
+             tools: s.tools.map((st: any) => st.tool)
           }))
         } : undefined
       }))

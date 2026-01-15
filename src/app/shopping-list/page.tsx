@@ -20,7 +20,7 @@ export default function ShoppingListPage() {
 
   useEffect(() => {
     loadTemplates()
-  }, [])
+  }, [loadTemplates])
 
   const activePlans = templates.filter(t => t.isActive);
 
@@ -114,10 +114,9 @@ export default function ShoppingListPage() {
            <Alert variant="default" className="bg-yellow-50 border-yellow-200 text-yellow-800">
                <AlertTriangle className="h-4 w-4 text-yellow-800" />
                <AlertTitle>No Active Plans</AlertTitle>
-               <AlertDescription>
-                   You don't have any active meal plans. Go to the <strong>Meal Planner</strong> and mark a plan as "Active" to generate your list.
-               </AlertDescription>
-           </Alert>
+                          <AlertDescription>
+                              You don&apos;t have any active meal plans. Go to the <strong>Meal Planner</strong> and mark a plan as &quot;Active&quot; to generate your list.
+                          </AlertDescription>           </Alert>
       )}
 
       {activePlans.length > 1 && (

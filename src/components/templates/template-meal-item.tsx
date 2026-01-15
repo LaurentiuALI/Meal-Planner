@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { TemplateMeal, MealModifications } from '@/types';
+import { TemplateMeal } from '@/types';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,12 +38,12 @@ export function TemplateMealItem({ meal }: TemplateMealItemProps) {
 
   const recipe = meal.recipe;
   const ingredient = meal.ingredient;
-  const mods = meal.modifications || { ingredients: {}, tools: {} };
+  const mods = useMemo(() => meal.modifications || { ingredients: {}, tools: {} }, [meal.modifications]);
 
   // Flatten ingredients and tools
   const { ingredients, tools } = useMemo(() => {
     if (recipe) {
-        const ings: any[] = [];
+        const ings: any[] = []; 
         const tls: any[] = [];
 
         recipe.steps.forEach(step => {

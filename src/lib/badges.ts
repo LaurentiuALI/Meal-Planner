@@ -24,7 +24,7 @@ export function calculateRecipeMacros(recipe: Recipe, allIngredients: Ingredient
         const ingredient = allIngredients.find((i) => i.id === ri.ingredientId);
         if (ingredient) {
           const factor = ri.amount / 100;
-          const macros = (ingredient as any).macros || ingredient;
+          const macros = ingredient.macros;
           
           totalMacros.protein += (macros.protein || 0) * factor;
           totalMacros.carbs += (macros.carbs || 0) * factor;

@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { TemplateDay, TemplateMeal, Slot } from '@/types';
 import { useTemplateStore } from '@/store/useTemplateStore';
-import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Settings, Trash2, Plus, Utensils } from 'lucide-react';
+import { Settings, Trash2, Plus } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { TemplateMealItem } from './template-meal-item';

@@ -10,7 +10,6 @@ export async function getPlans(): Promise<DayPlan[]> {
       meals: {
         orderBy: { sortOrder: 'asc' },
         include: {
-            // @ts-ignore: Prisma client types might be out of sync
             ingredient: true,
             recipe: true
         }

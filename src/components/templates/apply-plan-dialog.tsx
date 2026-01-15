@@ -40,7 +40,7 @@ export function ApplyPlanDialog({ open, onOpenChange, template }: ApplyPlanDialo
         <DialogHeader>
           <DialogTitle>Apply Plan to Schedule</DialogTitle>
           <DialogDescription>
-            This will copy the {template.days.length} days of "<strong>{template.name}</strong>" to your calendar starting from the date below.
+            This will copy the {template.days.length} days of &quot;<strong>{template.name}</strong>&quot; to your calendar starting from the date below.
           </DialogDescription>
         </DialogHeader>
 

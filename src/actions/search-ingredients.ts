@@ -1,7 +1,7 @@
 'use server'
 
-import { searchOpenFoodFacts, OFFProduct } from './openfoodfacts';
-import { searchSpoonacular, SpoonacularIngredient } from './spoonacular';
+import { searchOpenFoodFacts } from './openfoodfacts';
+import { searchSpoonacular } from './spoonacular';
 
 export interface UnifiedSearchResult {
   source: 'OpenFoodFacts' | 'Spoonacular';

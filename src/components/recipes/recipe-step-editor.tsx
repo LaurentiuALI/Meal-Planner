@@ -1,15 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ToolSelector } from './tool-selector';
 import { SmartIngredientRow } from './smart-ingredient-row';
 import { useIngredientStore } from '@/store/useIngredientStore';
-import { RecipeStep, RecipeIngredient } from '@/types';
-import { Trash2, GripVertical, ChevronDown, ChevronUp } from 'lucide-react';
+import { RecipeIngredient } from '@/types';
+import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 // Simplified type for form state

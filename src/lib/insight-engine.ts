@@ -53,7 +53,7 @@ export function generatePlanInsights(
   })
 
   // Check if any tool is used in > 2 DIFFERENT recipes
-  let overloadedTools: string[] = []
+  const overloadedTools: string[] = []
   toolCounts.forEach((count, tool) => {
     if (count > 2) overloadedTools.push(tool)
   })

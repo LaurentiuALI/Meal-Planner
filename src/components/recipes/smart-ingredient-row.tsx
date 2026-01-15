@@ -269,7 +269,7 @@ export function SmartIngredientRow({
                         className="cursor-pointer py-3 font-semibold text-primary data-[disabled]:pointer-events-auto data-[disabled]:opacity-100"
                       >
                         <PlusCircle className="mr-3 h-4 w-4" />
-                        Create "{searchValue}"
+                        Create &quot;{searchValue}&quot;
                       </CommandItem>
                     </CommandGroup>
                   )}

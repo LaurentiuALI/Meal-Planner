@@ -56,7 +56,7 @@ export async function searchSpoonacular(query: string): Promise<SpoonacularIngre
                         nutrition: infoData.nutrition,
                         possibleUnits: infoData.possibleUnits
                     } as SpoonacularIngredient;
-                } catch (e) {
+                } catch {
                     return null;
                 }
             })

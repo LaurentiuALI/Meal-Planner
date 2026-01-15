@@ -30,7 +30,7 @@ export default function Dashboard() {
   useEffect(() => {
     fetchPlans()
     loadTemplates()
-  }, [])
+  }, [fetchPlans, loadTemplates])
 
   const { stats, insights } = useMemo(() => {
     let totalCals = 0
@@ -113,7 +113,7 @@ export default function Dashboard() {
           Welcome back!
         </h1>
         <p className="text-xl text-muted-foreground">
-          Here's what's happening with your meal prep this week.
+          Here&apos;s what&apos;s happening with your meal prep this week.
         </p>
       </div>
 

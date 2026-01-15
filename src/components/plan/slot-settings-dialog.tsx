@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Settings, Plus, Trash2, GripVertical } from 'lucide-react';
+import { Settings, Plus, Trash2 } from 'lucide-react';
 import { useSlotStore } from '@/store/useSlotStore';
 import { addSlot, deleteSlot, updateSlots } from '@/actions/slots';
 import { Slot } from '@/types';

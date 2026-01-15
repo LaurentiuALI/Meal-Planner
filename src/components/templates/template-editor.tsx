@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { PlanTemplate, TemplateMeal } from '@/types';
 import { useTemplateStore } from '@/store/useTemplateStore';
 import { useRecipeStore } from '@/store/useRecipeStore';
@@ -43,10 +43,6 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
   
   const [isApplyOpen, setIsApplyOpen] = useState(false);
   const [activeDragItem, setActiveDragItem] = useState<TemplateMeal | null>(null);
-  
-  // Analysis State
-  const [insights, setInsights] = useState<any[]>([]);
-  const [score, setScore] = useState(0);
 
   // Debounce template for analysis
   const debouncedTemplate = useDebounce(template, 1000);
@@ -55,8 +51,9 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     loadSlots();
   }, [loadSlots]);
 
-  useEffect(() => {
-    if (debouncedTemplate.days.length === 0) return;
+  // Analysis State (Derived)
+  const { insights, score } = useMemo(() => {
+    if (debouncedTemplate.days.length === 0) return { insights: [], score: 0 };
     
     // 1. Aggregate all meals from the template
     // We map TemplateMeal to the structure expected by analysis (Meal)
@@ -79,7 +76,6 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
 
     // 2. Generate Insights
     const generatedInsights = generatePlanInsights(fakePlan, recipes, ingredients);
-    setInsights(generatedInsights);
 
     // 3. Calculate Score
     let calcScore = 100;
@@ -104,7 +100,10 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
         if (i.type === 'warning') calcScore -= 5;
     });
 
-    setScore(Math.max(0, Math.min(100, calcScore)));
+    return { 
+        insights: generatedInsights, 
+        score: Math.max(0, Math.min(100, calcScore)) 
+    };
 
   }, [debouncedTemplate, recipes, ingredients]);
 
@@ -136,8 +135,8 @@ export function TemplateEditor({ template }: TemplateEditorProps) {
     if (activeId === overId) return;
 
     // Identify Source
-    let sourceDay = template.days.find(d => d.meals.some(m => m.id === activeId));
-    let sourceMeal = sourceDay?.meals.find(m => m.id === activeId);
+    const sourceDay = template.days.find(d => d.meals.some(m => m.id === activeId));
+    const sourceMeal = sourceDay?.meals.find(m => m.id === activeId);
     if (!sourceDay || !sourceMeal) return;
 
     // Identify Target

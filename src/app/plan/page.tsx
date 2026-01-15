@@ -2,101 +2,23 @@
 
 import { useEffect, useState } from 'react';
 import { useTemplateStore } from '@/store/useTemplateStore';
-import { createPlanTemplate } from '@/actions/templates';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { TemplateEditor } from '@/components/templates/template-editor';
-import { Plus, CheckCircle2, AlertTriangle, Menu, X, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { AlertTriangle, Menu } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { SlotSettingsDialog } from '@/components/plan/slot-settings-dialog';
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { SidebarContent } from '@/components/plan/sidebar-content';
 
 export default function PlansPage() {
-  const { templates, loadTemplates, setActiveTemplate, activeTemplateId, getActiveTemplate, deleteTemplate } = useTemplateStore();
-  const [newPlanName, setNewPlanName] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
+  const { templates, loadTemplates, getActiveTemplate } = useTemplateStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     loadTemplates();
-  }, []);
-
-  const handleCreate = async () => {
-    if (!newPlanName.trim()) return;
-    setIsCreating(true);
-    await createPlanTemplate(newPlanName);
-    await loadTemplates();
-    setNewPlanName('');
-    setIsCreating(false);
-  };
-
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this plan?')) {
-      await deleteTemplate(id);
-    }
-  };
+  }, [loadTemplates]); // Added dependency
 
   const activeTemplate = getActiveTemplate();
   const activePlanCount = templates.filter(t => t.isActive).length;
-
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-lg">My Plans</h2>
-        <SlotSettingsDialog />
-      </div>
-      
-      <div className="space-y-2 mb-4">
-        <div className="flex gap-2">
-          <Input 
-            placeholder="New Plan Name..." 
-            value={newPlanName}
-            onChange={(e) => setNewPlanName(e.target.value)}
-            className="h-8 text-sm"
-          />
-          <Button size="sm" onClick={handleCreate} disabled={!newPlanName || isCreating}>
-            <Plus className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div className="space-y-1 flex-1 overflow-y-auto">
-        {templates.map(template => (
-          <div 
-            key={template.id}
-            onClick={() => {
-                setActiveTemplate(template.id);
-                setIsMobileMenuOpen(false);
-            }}
-            className={`
-              p-2 rounded-md cursor-pointer text-sm font-medium transition-colors flex justify-between items-center group
-              ${activeTemplateId === template.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
-            `}
-          >
-            <div>
-                {template.name}
-                <div className="text-xs opacity-70 font-normal">
-                  {template.days.length} Days
-                </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {template.isActive && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity ${activeTemplateId === template.id ? 'text-primary-foreground hover:text-primary-foreground/80 hover:bg-primary/80' : ''}`}
-                onClick={(e) => handleDelete(e, template.id)}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   return (
     <div className="flex h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)] flex-col md:flex-row -mx-4 -my-6 md:mx-0 md:my-0">
@@ -112,7 +34,7 @@ export default function PlansPage() {
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-80 p-4 pt-10">
-                <SidebarContent />
+                <SidebarContent onPlanSelect={() => setIsMobileMenuOpen(false)} />
             </SheetContent>
         </Sheet>
       </div>

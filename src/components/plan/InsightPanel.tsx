@@ -3,7 +3,7 @@
 import { AlertCircle, CheckCircle2, Info } from "lucide-react"
 
 interface Insight {
-  type: 'warning' | 'info' | 'success';
+  type: 'warning' | 'info' | 'success' | 'error';
   title: string;
   message: string;
 }
@@ -24,6 +24,9 @@ export function InsightPanel({ insights, cookingStrategy }: InsightPanelProps) {
           let Icon = Info
           
           if (insight.type === 'warning') {
+            styles = "bg-amber-50 text-amber-900 border-amber-200"
+            Icon = AlertCircle
+          } else if (insight.type === 'error') {
             styles = "bg-red-50 text-red-900 border-red-200"
             Icon = AlertCircle
           } else if (insight.type === 'info') {
@@ -53,7 +56,7 @@ export function InsightPanel({ insights, cookingStrategy }: InsightPanelProps) {
       {cookingStrategy && cookingStrategy.length > 0 && (
         <div className="rounded-lg border bg-white p-4">
           <h3 className="font-semibold mb-2 flex items-center gap-2">
-             👨‍🍳 Chef's Strategy
+             👨‍🍳 Chef&apos;s Strategy
           </h3>
           <div className="text-sm space-y-2 text-muted-foreground">
             {cookingStrategy.map((step, i) => (
