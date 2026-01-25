@@ -84,6 +84,7 @@ export async function getTemplates(): Promise<PlanTemplate[]> {
         slotName: m.slotName,
         sortOrder: m.sortOrder,
         servings: m.servings,
+        modifications: m.modifications ? JSON.parse(m.modifications) : null,
         recipe: m.recipe ? {
           id: m.recipe.id,
           name: m.recipe.name,

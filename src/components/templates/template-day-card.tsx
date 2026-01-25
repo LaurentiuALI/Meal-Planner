@@ -23,10 +23,91 @@ interface TemplateDayCardProps {
   className?: string;
 }
 
+interface MacroStats {
+    protein: number;
+    carbs: number;
+    fat: number;
+    calories: number;
+    fiber: number;
+}
+
+function calculateMealStats(meals: TemplateMeal[]): MacroStats {
+    return meals.reduce((acc, meal) => {
+        let protein = 0, carbs = 0, fat = 0, cals = 0, fiber = 0;
+        
+        // Ensure modifications is treated as an object. 
+        // In the updated action, we parse it, so it should be an object if present.
+        // But if it's still a string for some reason (e.g. old state), parse it.
+        let mods: any = meal.modifications || { ingredients: {}, tools: {} };
+        if (typeof mods === 'string') {
+            try {
+                mods = JSON.parse(mods);
+            } catch (e) {
+                mods = { ingredients: {}, tools: {} };
+            }
+        }
+
+        if (meal.recipe) {
+            meal.recipe.steps.forEach(step => {
+                step.ingredients.forEach(ri => {
+                    if (!ri.ingredient) return;
+                    const ing = ri.ingredient;
+                    
+                    // Check for override
+                    let amount = ri.amount;
+                    if (mods.ingredients && mods.ingredients[ing.id]) {
+                        amount = mods.ingredients[ing.id].amount;
+                    }
+
+                    const ratio = amount / 100;
+                    protein += ing.macros.protein * ratio;
+                    carbs += ing.macros.carbs * ratio;
+                    fat += ing.macros.fat * ratio;
+                    cals += ing.macros.calories * ratio;
+                    fiber += ing.macros.fiber * ratio;
+                });
+            });
+            
+            // Multiply by servings
+            protein *= meal.servings;
+            carbs *= meal.servings;
+            fat *= meal.servings;
+            cals *= meal.servings;
+            fiber *= meal.servings;
+
+        } else if (meal.ingredient && meal.ingredientAmount) {
+            const ing = meal.ingredient;
+            const ratio = meal.ingredientAmount / 100; // assuming per 100 unit base for macros
+            protein = ing.macros.protein * ratio;
+            carbs = ing.macros.carbs * ratio;
+            fat = ing.macros.fat * ratio;
+            cals = ing.macros.calories * ratio;
+            fiber = ing.macros.fiber * ratio;
+            
+            // Multiply by servings
+            protein *= meal.servings;
+            carbs *= meal.servings;
+            fat *= meal.servings;
+            cals *= meal.servings;
+            fiber *= meal.servings;
+        }
+
+        return {
+          protein: acc.protein + protein,
+          carbs: acc.carbs + carbs,
+          fat: acc.fat + fat,
+          calories: acc.calories + cals,
+          fiber: acc.fiber + fiber,
+        };
+    }, { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 });
+}
+
 function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: string, meals: TemplateMeal[], onAddMeal: () => void }) {
     const { setNodeRef, isOver } = useDroppable({
         id: `${dayId}::${slot.name}`
     });
+
+    const stats = calculateMealStats(meals);
 
     return (
         <div 
@@ -37,7 +118,18 @@ function SlotContainer({ slot, dayId, meals, onAddMeal }: { slot: Slot, dayId: s
             )}
         >
             <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-                <span>{slot.name}</span>
+                <div className="flex flex-col gap-0.5">
+                    <span>{slot.name}</span>
+                    {meals.length > 0 && (
+                        <div className="flex flex-wrap gap-x-2 gap-y-0 text-[10px] font-medium normal-case">
+                            <span className="text-slate-500">{Math.round(stats.calories)} kcal</span>
+                            <span className="text-blue-600">P:{Math.round(stats.protein)}g</span>
+                            <span className="text-amber-600">C:{Math.round(stats.carbs)}g</span>
+                            <span className="text-emerald-600">F:{Math.round(stats.fat)}g</span>
+                            <span className="text-green-700">Fib:{Math.round(stats.fiber)}g</span>
+                        </div>
+                    )}
+                </div>
                 <span>{slot.time}</span>
             </div>
             <SortableContext items={meals.map(m => m.id)} strategy={verticalListSortingStrategy}>
@@ -67,56 +159,8 @@ export function TemplateDayCard({ day, slots, mode = 'desktop', className }: Tem
   const [nameInput, setNameInput] = useState(day.name);
   const [targetSlotName, setTargetSlotName] = useState<string | null>(null);
 
-  // Calculate Totals
-  const totals = day.meals.reduce((acc, meal) => {
-    let protein = 0, carbs = 0, fat = 0, cals = 0, fiber = 0;
-    
-    if (meal.recipe) {
-        meal.recipe.steps.forEach(step => {
-            step.ingredients.forEach(ri => {
-                if (!ri.ingredient) return;
-                const ing = ri.ingredient;
-                const ratio = ri.amount / 100;
-                protein += ing.macros.protein * ratio;
-                carbs += ing.macros.carbs * ratio;
-                fat += ing.macros.fat * ratio;
-                cals += ing.macros.calories * ratio;
-                fiber += ing.macros.fiber * ratio;
-            });
-        });
-        
-        // Multiply by servings
-        protein *= meal.servings;
-        carbs *= meal.servings;
-        fat *= meal.servings;
-        cals *= meal.servings;
-        fiber *= meal.servings;
-
-    } else if (meal.ingredient && meal.ingredientAmount) {
-        const ing = meal.ingredient;
-        const ratio = meal.ingredientAmount / 100; // assuming per 100 unit base for macros
-        protein = ing.macros.protein * ratio;
-        carbs = ing.macros.carbs * ratio;
-        fat = ing.macros.fat * ratio;
-        cals = ing.macros.calories * ratio;
-        fiber = ing.macros.fiber * ratio;
-        
-        // Multiply by servings (if we treat servings as multiplier for standalone ingredients too)
-        protein *= meal.servings;
-        carbs *= meal.servings;
-        fat *= meal.servings;
-        cals *= meal.servings;
-        fiber *= meal.servings;
-    }
-
-    return {
-      protein: acc.protein + protein,
-      carbs: acc.carbs + carbs,
-      fat: acc.fat + fat,
-      calories: acc.calories + cals,
-      fiber: acc.fiber + fiber,
-    };
-  }, { protein: 0, carbs: 0, fat: 0, calories: 0, fiber: 0 });
+  // Calculate Totals using the new helper which respects modifications
+  const totals = calculateMealStats(day.meals);
 
   const handleNameSave = () => {
     if (nameInput !== day.name) {
