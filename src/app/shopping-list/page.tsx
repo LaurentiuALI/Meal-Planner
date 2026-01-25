@@ -38,7 +38,14 @@ export default function ShoppingListPage() {
              if (recipe) {
                 recipe.steps.forEach(step => {
                    step.ingredients.forEach((ri) => {
-                      const amount = ri.amount * (meal.servings || 1)
+                      let baseAmount = ri.amount;
+                      
+                      // Check for override
+                      if (meal.modifications?.ingredients?.[ri.ingredientId]) {
+                          baseAmount = meal.modifications.ingredients[ri.ingredientId].amount;
+                      }
+
+                      const amount = baseAmount * (meal.servings || 1)
                       aggregates[ri.ingredientId] = (aggregates[ri.ingredientId] || 0) + amount
                    })
                 });
