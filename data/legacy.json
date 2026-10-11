@@ -1,0 +1,23 @@
+{
+  "source": "Ingredientele introduse manual în aplicația veche (prisma/dev.db)",
+  "products": [
+    { "name": "Carne tocata vita-porc 15% grasime Lidl", "aisle": "carne", "lidl": true, "kcal": 174, "protein": 19.5, "carbs": 0, "fat": 10.7, "fiber": 0, "packGrams": 500 },
+    { "name": "Cartofi pai - congelati rapid - Carrefour", "aisle": "congelate", "lidl": false, "kcal": 53, "protein": 1.4, "carbs": 11, "fat": 0.1, "fiber": 1.1, "packGrams": 1000 },
+    { "name": "Fasole rosie - Bio Kidney Beans Ready to Eat - Freshona", "aisle": "conserve", "lidl": true, "kcal": 93, "protein": 7.2, "carbs": 11, "fat": 0.6, "fiber": 6.9, "packGrams": 255 },
+    { "name": "Ceapa Rosie", "aisle": "fructe-legume", "lidl": false, "kcal": 39, "protein": 1.2, "carbs": 8.3, "fat": 0.1, "fiber": 1.7, "packGrams": null, "portions": [{ "name": "bucată", "grams": 120 }] },
+    { "name": "Castraveti Murati simplu", "aisle": "conserve", "lidl": false, "kcal": 29, "protein": 1.1, "carbs": 4.4, "fat": 0.5, "fiber": 1.2, "packGrams": 500 },
+    { "name": "High Protein Mature Cheese slices - Milbona (Lidl)", "aisle": "lactate-oua", "lidl": true, "kcal": 237, "protein": 34.1, "carbs": 2.4, "fat": 9.9, "fiber": 0.9, "packGrams": 200, "portions": [{ "name": "felie", "grams": 25 }] },
+    { "name": "Piept pui - Axedum", "aisle": "carne", "lidl": false, "kcal": 99, "protein": 19.6, "carbs": 0, "fat": 2.3, "fiber": 0, "packGrams": 500 },
+    { "name": "Cartofi dulci congelați - Harvest Basket", "aisle": "congelate", "lidl": true, "kcal": 154, "protein": 2.3, "carbs": 17.3, "fat": 7.6, "fiber": 3.6, "packGrams": 450 },
+    { "name": "Broccoli congelat Kaufland", "aisle": "congelate", "lidl": false, "kcal": 26, "protein": 3, "carbs": 2, "fat": 0, "fiber": 3.1, "packGrams": 450 },
+    { "name": "Parmezan Grana Padano grated - Lovilio (Lidl)", "aisle": "lactate-oua", "lidl": true, "kcal": 398, "protein": 33, "carbs": 0, "fat": 29, "fiber": 0, "packGrams": 250, "portions": [{ "name": "lingură", "grams": 5 }] },
+    { "name": "Iaurt in stil grecesc low fat 2% Milbona", "aisle": "lactate-oua", "lidl": true, "kcal": 58, "protein": 6, "carbs": 4, "fat": 2, "fiber": 0, "packGrams": 1000 },
+    { "name": "Lentilles linsen freshona", "aisle": "conserve", "lidl": true, "kcal": 69, "protein": 4, "carbs": 10.3, "fat": 0.3, "fiber": 4, "packGrams": 400 },
+    { "name": "Branza fagaras", "aisle": "lactate-oua", "lidl": false, "kcal": 87, "protein": 11.6, "carbs": 3.5, "fat": 3, "fiber": 0, "packGrams": 200 },
+    { "name": "bio organic oat flakes", "aisle": "camara", "lidl": true, "kcal": 364, "protein": 14.2, "carbs": 55.1, "fat": 6.9, "fiber": 12.3, "packGrams": 500, "portions": [{ "name": "lingură", "grams": 8 }] },
+    { "name": "Seminte de Chia", "aisle": "camara", "lidl": false, "kcal": 480, "protein": 15.8, "carbs": 43.8, "fat": 30.8, "fiber": 37.7, "packGrams": 100, "portions": [{ "name": "lingură", "grams": 12 }] },
+    { "name": "Hellman’s Original Mayonnaise", "aisle": "condimente", "lidl": false, "kcal": 671, "protein": 0.6, "carbs": 2.9, "fat": 73, "fiber": 0, "packGrams": 405, "portions": [{ "name": "lingură", "grams": 14 }] },
+    { "name": "Afine de Cultura camara noastra", "aisle": "congelate", "lidl": false, "kcal": 44, "protein": 0.6, "carbs": 8.4, "fat": 0.5, "fiber": 1.5, "packGrams": 400 },
+    { "name": "Winterfresh", "aisle": "gustari", "lidl": false, "kcal": 0, "protein": 0, "carbs": 0, "fat": 0, "fiber": 0, "packGrams": 100 }
+  ]
+}

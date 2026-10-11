@@ -1,0 +1,79 @@
+import { sql } from "drizzle-orm";
+import { integer, real, sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import type { Portion, RecipeStep, Settings } from "@/domain/types";
+
+const timestamps = {
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+};
+
+export const ingredients = sqliteTable(
+  "ingredients",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    brand: text("brand"),
+    kcal: real("kcal").notNull(),
+    protein: real("protein").notNull(),
+    carbs: real("carbs").notNull(),
+    fat: real("fat").notNull(),
+    fiber: real("fiber"),
+    density: real("density").notNull().default(1),
+    portions: text("portions", { mode: "json" }).$type<Portion[]>().notNull().default([]),
+    packGrams: real("pack_grams"),
+    packLabel: text("pack_label"),
+    aisle: text("aisle").notNull().default("altele"),
+    staple: integer("staple", { mode: "boolean" }).notNull().default(false),
+    lidl: integer("lidl", { mode: "boolean" }).notNull().default(false),
+    source: text("source", { enum: ["off", "usda", "manual", "legacy"] }).notNull(),
+    barcode: text("barcode").unique(),
+    /** Ingredientele „tale” (create, importate sau folosite), față de catalogul brut. */
+    inLibrary: integer("in_library", { mode: "boolean" }).notNull().default(false),
+    ...timestamps,
+  },
+  (t) => [index("ingredients_library_idx").on(t.inLibrary)],
+);
+
+export const equipment = sqliteTable("equipment", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  kind: text("kind", { enum: ["plita", "cuptor", "airfryer", "vas", "vas-cuptor", "aparat"] }).notNull(),
+  count: integer("count").notNull().default(1),
+  capacityG: real("capacity_g"),
+  sort: integer("sort").notNull().default(0),
+});
+
+export const actions = sqliteTable("actions", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  equipment: text("equipment", { mode: "json" }).$type<string[][]>().notNull().default([]),
+  minutes: real("minutes").notNull(),
+  activeMinutes: real("active_minutes").notNull(),
+  perKgMinutes: real("per_kg_minutes").notNull().default(0),
+  tempC: integer("temp_c"),
+  capacityG: real("capacity_g"),
+  perBatch: integer("per_batch", { mode: "boolean" }).notNull().default(false),
+  mergeable: integer("mergeable", { mode: "boolean" }).notNull().default(true),
+  hint: text("hint"),
+  sort: integer("sort").notNull().default(0),
+});
+
+/** Pașii (cu liniile de ingrediente) stau ca JSON: o rețetă se editează și se salvează întotdeauna întreagă. */
+export const recipes = sqliteTable("recipes", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category", { enum: ["pranz", "gustare", "cina", "rapid"] }).notNull(),
+  servings: integer("servings").notNull().default(1),
+  freezes: integer("freezes", { mode: "boolean" }).notNull().default(false),
+  keepsDays: integer("keeps_days").notNull().default(3),
+  notes: text("notes").notNull().default(""),
+  steps: text("steps", { mode: "json" }).$type<RecipeStep[]>().notNull().default([]),
+  preset: integer("preset", { mode: "boolean" }).notNull().default(false),
+  archived: integer("archived", { mode: "boolean" }).notNull().default(false),
+  ...timestamps,
+});
+
+export const settings = sqliteTable("settings", {
+  id: integer("id").primaryKey(),
+  value: text("value", { mode: "json" }).$type<Settings>().notNull(),
+});
