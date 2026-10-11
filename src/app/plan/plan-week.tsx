@@ -24,7 +24,9 @@ export function PlanWeek({
   bundle,
   settings,
   suggestions,
+  leadingDay,
 }: {
+  leadingDay?: string;
   monday: string;
   today: string;
   bundle: PlanBundle;
@@ -40,6 +42,8 @@ export function PlanWeek({
   const recipes = (id: string) => bundle.recipes[id];
   const lookup = (id: string) => bundle.ingredients[id];
   const dates = weekDates(monday);
+  // Duminica, când vezi săptămâna care începe mâine, ziua de azi apare deasupra.
+  const days = leadingDay ? [leadingDay, ...dates] : dates;
   const byDate = useMemo(() => {
     const map = new Map<string, Meal[]>();
     for (const m of bundle.meals) map.set(m.date, [...(map.get(m.date) ?? []), m]);
@@ -121,7 +125,7 @@ export function PlanWeek({
         </div>
       )}
 
-      {dates.map((date) => {
+      {days.map((date) => {
         const dayMeals = byDate.get(date) ?? [];
         const totals = dayMacros(dayMeals, recipes, lookup);
         const isToday = date === today;
