@@ -4,7 +4,9 @@ import { connect } from "../src/server/db/connect";
 import * as t from "../src/server/db/schema";
 import { rowToAction, rowToEquipment, rowToIngredient, rowToRecipe } from "../src/server/mappers";
 import { planSession } from "../src/domain/cooking";
-import { addDays, type Meal } from "../src/domain/plan";
+import { addDays, weekday, type Meal } from "../src/domain/plan";
+
+const sessionDateFor = (from: string) => (weekday(from) === 0 ? addDays(from, -1) : from);
 
 async function main() {
 const [from, to] = process.argv.slice(2);
@@ -24,12 +26,12 @@ const p = planSession({
   lookup: (id) => I.get(id),
   actions: new Map(actions.map((a) => [a.id, rowToAction(a)])),
   equipment: equipment.sort((a, b) => a.sort - b.sort).map(rowToEquipment),
-  sessionDate: addDays(from, -1),
+  sessionDate: sessionDateFor(from),
 });
 const mm = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, "0")}`;
 for (const s of p.timeline) {
   const batch = s.batches > 1 ? ` (tura ${s.batch}/${s.batches})` : "";
-  console.log(`${mm(s.start)}–${mm(s.end)} ${s.activeEnd > s.start ? "●" : "○"} ${s.task.title}${batch} · ${Math.round(s.loadG)} g · ${s.units.join(",")}${s.rinse ? " (clătește)" : ""} · ${s.task.recipeIds.map((r) => R.get(r)?.name.slice(0, 18)).join(" + ")}`);
+  console.log(`${mm(s.start)}–${mm(s.end)} ${s.activeEnd > s.start ? "●" : "○"} ${s.task.title}${batch} · ${Math.round(s.loadG)} g · ${s.units.join(",")}${s.rinse ? " (clătește)" : ""} · ${s.recipeIds.map((r) => R.get(r)?.name.slice(0, 18)).join(" + ")}`);
 }
 console.log(`\nTotal ${mm(p.totalMinutes)} (activ ${Math.round(p.activeMinutes)} min, rețetă cu rețetă ar fi ${mm(p.serialMinutes)})`);
 console.log("Vase:", p.dishes.join(", "));

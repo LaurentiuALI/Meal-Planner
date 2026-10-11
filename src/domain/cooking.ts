@@ -22,7 +22,10 @@ export type Task = {
   title: string;
   texts: { recipeId: string; text: string }[];
   recipeIds: string[];
+  /** Ingredientele adăugate la pasul ăsta. */
   lines: CookLine[];
+  /** Tot ce intră în ustensilă: ce vine din pregătire (puiul tăiat) plus `lines`. */
+  inputs: CookLine[];
   /** Gramele care intră în ustensilă (pentru capacitate), înainte de factorul de volum. */
   loadG: number;
   minutes: number;
@@ -45,6 +48,9 @@ export type Job = {
   task: Task;
   batch: number;
   batches: number;
+  /** Rețetele și ingredientele din tura asta (o tură poate fi doar a unei rețete). */
+  recipeIds: string[];
+  inputs: CookLine[];
   loadG: number;
   minutes: number;
   activeMinutes: number;
@@ -124,7 +130,9 @@ function buildTasks(input: CookInput) {
       totals.delete(r.id);
     }
   }
-  for (const { recipe: r, servings, lineGrams } of totals.values()) {
+  for (const { recipe: r, servings, lineGrams, dates } of totals.values()) {
+    // Ce mănânci în ziua sesiunii nu se pune în caserole.
+    const eatenToday = [...dates].every((d) => d === input.sessionDate);
     // Dependențe reale, nu ordinea din rețetă: gătitul așteaptă pregătirea care îl alimentează și pasul
     // anterior doar dacă continuă în același vas; asamblarea de la final așteaptă tot.
     const ids: string[] = [];
@@ -143,6 +151,7 @@ function buildTasks(input: CookInput) {
       }));
       const own = lines.reduce((a, l) => a + l.grams, 0);
       const isPrep = !action || action.equipment.length === 0;
+      const inputs = isPrep ? lines : [...carry, ...lines];
       let loadG = own;
       let deps: string[] = [];
       if (!isPrep) {
@@ -172,6 +181,7 @@ function buildTasks(input: CookInput) {
         texts: s.text ? [{ recipeId: r.id, text: s.text }] : [],
         recipeIds: [r.id],
         lines,
+        inputs,
         loadG,
         minutes: (s.minutes ?? base.minutes) + (isPrep ? base.perKgMinutes * kg : 0),
         activeMinutes: Math.min(s.minutes ?? Infinity, (s.activeMinutes ?? base.activeMinutes) + base.perKgMinutes * kg),
@@ -190,7 +200,7 @@ function buildTasks(input: CookInput) {
       if (isPrep) prevPrep = id;
       else prevCook = id;
     }
-    if (servings > 1 || r.category !== "rapid") {
+    if (!eatenToday && (servings > 1 || r.category !== "rapid")) {
       tasks.push({
         id: `${r.id}:portion`,
         actionId: null,
@@ -198,6 +208,7 @@ function buildTasks(input: CookInput) {
         texts: [{ recipeId: r.id, text: "Lasă să se răcească puțin, apoi împarte egal. Capacul după ce nu mai iese abur." }],
         recipeIds: [r.id],
         lines: [],
+        inputs: [],
         loadG: 0,
         minutes: 1 + 0.5 * servings,
         activeMinutes: 1 + 0.5 * servings,
@@ -217,6 +228,45 @@ function buildTasks(input: CookInput) {
   return { tasks, totals, noCook };
 }
 
+/** Desface un pas unit înapoi în pașii rețetelor, refăcând dependențele către și dinspre el. */
+function splitMerged(tasks: Task[], index: number, originals: Map<string, Task>): Task[] {
+  const merged = tasks[index];
+  const parts = merged.id
+    .split("+")
+    .map((id) => originals.get(id))
+    .filter((x): x is Task => !!x)
+    .map((o) => (merged.switchedFrom ? { ...o, ...pickMethod(merged), switchedFrom: merged.switchedFrom } : o));
+  if (parts.length < 2) return tasks;
+  // Dependențele originale pot trimite la pași care între timp au fost uniți cu alții.
+  const current = (id: string) => tasks.find((x) => x.id === id || x.id.split("+").includes(id))?.id ?? id;
+  const rest = tasks.filter((_, j) => j !== index);
+  const fixedParts = parts.map((p) => ({ ...p, deps: [...new Set(p.deps.map(current))] }));
+  return [
+    ...rest.map((x) =>
+      x.deps.includes(merged.id)
+        ? {
+            ...x,
+            deps: [
+              ...new Set(
+                x.deps.flatMap((d) => {
+                  if (d !== merged.id) return [d];
+                  const mine = fixedParts.filter((p) => p.recipeIds.some((r) => x.recipeIds.includes(r)));
+                  return (mine.length ? mine : fixedParts).map((p) => p.id);
+                }),
+              ),
+            ],
+          }
+        : x,
+    ),
+    ...fixedParts,
+  ];
+}
+
+const pickMethod = (t: Task) => ({
+  actionId: t.actionId, title: t.title, minutes: t.minutes, activeMinutes: t.activeMinutes, tempC: t.tempC, hint: t.hint,
+  equipment: t.equipment, capacityG: t.capacityG, loadFactor: t.loadFactor, perBatch: t.perBatch,
+});
+
 /** Cuptorul se pornește o dată, înainte de primul pas care îl folosește; ceilalți pași îl așteaptă. */
 function withPreheat(tasks: Task[]): Task[] {
   const oven = tasks.filter((t) => t.equipment.some((g) => g.includes("cuptor")));
@@ -229,6 +279,7 @@ function withPreheat(tasks: Task[]): Task[] {
     texts: [],
     recipeIds: [],
     lines: [],
+    inputs: [],
     loadG: 0,
     minutes: 10,
     activeMinutes: 0,
@@ -310,6 +361,7 @@ export function mergeTasks(tasks: Task[], actions: Map<string, Action>): Task[] 
         texts: [...into.texts, ...t.texts],
         recipeIds: [...into.recipeIds, ...t.recipeIds],
         lines,
+        inputs: [...into.inputs, ...t.inputs],
         loadG: into.loadG + t.loadG,
         // Pregătirea comună: timpul de bază o singură dată, plus timpul pe kg pentru tot.
         minutes: into.kind === "prep" ? a.minutes + a.perKgMinutes * kg : Math.max(into.minutes, t.minutes),
@@ -349,18 +401,52 @@ function capacityFor(task: Task, eq: Map<string, Equipment>): { cap: number | nu
   return { cap: null, multiUnit: false };
 }
 
+type BatchPlan = { recipeIds: string[]; inputs: CookLine[]; loadG: number };
+
+/**
+ * Cum se împarte un pas în ture. Un pas comun mai multor rețete se împarte pe rețete (puiul cu
+ * marinadă de shawarma nu se amestecă cu cel de la prânz); două rețete împart o tură doar dacă încap.
+ */
+function batchPlan(t: Task, cap: number | null): BatchPlan[] {
+  const volume = t.loadG * t.loadFactor;
+  const whole = (k: number): BatchPlan[] =>
+    Array.from({ length: k }, () => ({ recipeIds: t.recipeIds, inputs: t.inputs.map((l) => ({ ...l, grams: l.grams / k })), loadG: t.loadG / k }));
+  if (!cap || volume <= cap) return whole(1);
+  if (!t.perBatch || t.recipeIds.length < 2) return whole(Math.ceil(volume / cap));
+
+  const total = t.inputs.reduce((a, l) => a + l.grams, 0);
+  const chunks: BatchPlan[] = [];
+  for (const r of t.recipeIds) {
+    const mine = t.inputs.filter((l) => l.recipeId === r);
+    const share = total > 0 ? mine.reduce((a, l) => a + l.grams, 0) / total : 1 / t.recipeIds.length;
+    const load = t.loadG * share;
+    const k = Math.max(1, Math.ceil((load * t.loadFactor) / cap));
+    for (let i = 0; i < k; i++) chunks.push({ recipeIds: [r], inputs: mine.map((l) => ({ ...l, grams: l.grams / k })), loadG: load / k });
+  }
+  const bins: BatchPlan[] = [];
+  for (const c of chunks.sort((a, b) => b.loadG - a.loadG)) {
+    const bin = bins.find((b) => (b.loadG + c.loadG) * t.loadFactor <= cap);
+    if (bin) {
+      bin.recipeIds = [...new Set([...bin.recipeIds, ...c.recipeIds])];
+      bin.inputs = [...bin.inputs, ...c.inputs];
+      bin.loadG += c.loadG;
+    } else bins.push({ ...c });
+  }
+  return bins;
+}
+
 export function expandJobs(tasks: Task[], eq: Map<string, Equipment>): { jobs: Job[]; warnings: string[] } {
   const warnings: string[] = [];
-  const batchesOf = new Map<string, number>();
+  const plans = new Map<string, BatchPlan[]>();
   for (const t of tasks) {
     const { cap } = capacityFor(t, eq);
-    const volume = t.loadG * t.loadFactor;
-    const batches = cap && volume > cap ? Math.ceil(volume / cap) : 1;
-    batchesOf.set(t.id, batches);
-    if (batches > 1 && !t.perBatch) {
-      warnings.push(`${t.title}: ~${Math.round(volume)} g nu încap odată (${Math.round(cap!)} g); se face în ${batches} ture.`);
+    const plan = batchPlan(t, cap);
+    plans.set(t.id, plan);
+    if (plan.length > 1 && !t.perBatch) {
+      warnings.push(`${t.title}: ~${Math.round(t.loadG * t.loadFactor)} g nu încap odată (${Math.round(cap!)} g); se face în ${plan.length} ture.`);
     }
   }
+  const batchesOf = new Map([...plans].map(([id, p]) => [id, p.length]));
 
   // Pregătirea care alimentează doar un pas făcut în ture se taie în aceleași ture:
   // curăți prima porție de cartofi, o bagi în airfryer, apoi o cureți pe următoarea.
@@ -383,16 +469,20 @@ export function expandJobs(tasks: Task[], eq: Map<string, Equipment>): { jobs: J
   for (const t of tasks) {
     const n = batchesOf.get(t.id) ?? 1;
     const split = splitInto.has(t.id);
+    const plan = split ? batchPlanEven(t, n) : plans.get(t.id)!;
     for (let b = 1; b <= n; b++) {
       // Tura k a unui pas în ture așteaptă tura k a pregătirii lui (nu toată pregătirea).
       const depsFor = (d: string) => (splitInto.has(d) && (batchesOf.get(d) ?? 1) === n ? jobId(d, b) : lastJob(d));
       const deps = b === 1 ? t.deps.map(depsFor) : [jobId(t.id, b - 1), ...t.deps.filter((d) => splitInto.has(d)).map(depsFor)];
+      const p = plan[b - 1];
       jobs.push({
         id: jobId(t.id, b),
         task: t,
         batch: b,
         batches: n,
-        loadG: t.loadG / n,
+        recipeIds: p.recipeIds,
+        inputs: p.inputs,
+        loadG: p.loadG,
         minutes: split ? t.minutes / n : t.minutes,
         activeMinutes: split ? t.activeMinutes / n : t.activeMinutes,
         deps: [...new Set(deps)],
@@ -400,6 +490,10 @@ export function expandJobs(tasks: Task[], eq: Map<string, Equipment>): { jobs: J
     }
   }
   return { jobs, warnings };
+}
+
+function batchPlanEven(t: Task, n: number): BatchPlan[] {
+  return Array.from({ length: n }, () => ({ recipeIds: t.recipeIds, inputs: t.inputs.map((l) => ({ ...l, grams: l.grams / n })), loadG: t.loadG / n }));
 }
 
 // ─── 5. Timeline ───
@@ -473,7 +567,8 @@ export function schedule(jobs: Job[], equipment: Equipment[]): Scheduled[] {
           chosen.push(u);
           need -= u.capacityG ?? 0;
         }
-        if (!chosen.length) return null;
+        // Nu înghesuim: dacă vasele libere nu ajung, așteptăm să se elibereze altele.
+        if (!chosen.length || need > 0) return null;
         keys.push(...chosen.map((u) => u.key));
         continue;
       }
@@ -591,12 +686,37 @@ export function planSession(input: CookInput): SessionPlan {
 
   // Metode alternative: încearcă fiecare pas de gătit cu celelalte metode (airfryer ↔ cuptor ↔ tigaie)
   // și păstrează schimbarea dacă sesiunea se scurtează. Căutare locală, deterministă.
+  const originals = new Map(tasks.map((t) => [t.id, t]));
   let best = evaluate(mergeTasks(tasks, input.actions));
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 4; round++) {
     let improved = false;
     for (let i = 0; i < best.tasks.length; i++) {
       const t = best.tasks[i];
       if (t.kind !== "cook") continue;
+      // Un pas unit poate fi mai bun despărțit (shawarma la airfryer, puiul de prânz în tigaie).
+      if (t.recipeIds.length > 1) {
+        // Despărțirea singură rar câștigă ceva; o evaluăm împreună cu cea mai bună metodă pentru fiecare parte.
+        let candidate = evaluate(splitMerged(best.tasks, i, originals));
+        const partIds = new Set(t.id.split("+"));
+        for (let k = 0; k < candidate.tasks.length; k++) {
+          const part = candidate.tasks[k];
+          if (!partIds.has(part.id)) continue;
+          const orig = part.switchedFrom ?? part.actionId;
+          for (const id of [orig, ...(input.actions.get(orig ?? "")?.alternatives ?? [])]) {
+            const a = id ? input.actions.get(id) : undefined;
+            if (!a || id === part.actionId) continue;
+            const next = [...candidate.tasks];
+            next[k] = id === orig ? { ...withAction(part, a), switchedFrom: null } : withAction(part, a);
+            const e = evaluate(next);
+            if (e.score < candidate.score) candidate = e;
+          }
+        }
+        if (candidate.score < best.score - 1) {
+          best = candidate;
+          improved = true;
+          continue;
+        }
+      }
       const original = t.switchedFrom ?? t.actionId;
       const options = [original, ...(input.actions.get(original ?? "")?.alternatives ?? [])].filter((id): id is string => !!id && id !== t.actionId);
       for (const id of options) {

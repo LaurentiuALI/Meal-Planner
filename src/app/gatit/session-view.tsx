@@ -90,9 +90,9 @@ async function notify(title: string) {
 /** Ingredientele unui pas, adunate pe nume, cu împărțirea pe rețete când sunt mai multe. */
 function linesSummary(s: Scheduled, recipeNames: Record<string, string>) {
   const by = new Map<string, { total: number; parts: Map<string, number> }>();
-  for (const l of s.task.lines) {
+  for (const l of s.inputs) {
     const cur = by.get(l.name) ?? { total: 0, parts: new Map() };
-    const g = l.grams / s.batches;
+    const g = l.grams;
     cur.total += g;
     cur.parts.set(l.recipeId, (cur.parts.get(l.recipeId) ?? 0) + g);
     by.set(l.name, cur);
@@ -300,7 +300,7 @@ export function SessionView({
                         )}
                       </div>
 
-                      {s.task.lines.length > 0 && (
+                      {s.inputs.length > 0 && (
                         <ul className="mt-2 space-y-0.5">
                           {linesSummary(s, recipeNames).map((l) => (
                             <li key={l.name} className="text-sm">
@@ -312,19 +312,19 @@ export function SessionView({
                       )}
                       {s.rinse && <p className="mt-1 text-xs text-muted-foreground">Clătește vasul înainte (l-ai folosit la altă rețetă).</p>}
                       {s.task.hint && <p className="mt-1 text-xs text-muted-foreground">💡 {s.task.hint}</p>}
-                      {s.task.texts.length > 0 && (
+                      {s.task.texts.some((t) => s.recipeIds.includes(t.recipeId)) && (
                         <ul className="mt-1.5 space-y-0.5 text-xs">
-                          {s.task.texts.map((t) => (
+                          {s.task.texts.filter((t) => s.recipeIds.includes(t.recipeId)).map((t) => (
                             <li key={t.recipeId + t.text}>
-                              {s.task.recipeIds.length > 1 && <b>{(recipeNames[t.recipeId] ?? "").split(" ").slice(0, 3).join(" ")}: </b>}
+                              {s.recipeIds.length > 1 && <b>{(recipeNames[t.recipeId] ?? "").split(" ").slice(0, 3).join(" ")}: </b>}
                               {t.text}
                             </li>
                           ))}
                         </ul>
                       )}
-                      {s.task.recipeIds.length > 0 && (
+                      {s.recipeIds.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1">
-                          {s.task.recipeIds.map((r) => (
+                          {s.recipeIds.map((r) => (
                             <span key={r} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
                               {recipeNames[r]}
                             </span>
@@ -376,7 +376,7 @@ export function SessionView({
                       <b className="tabular-nums">{s.loadG >= 1 ? grams(s.loadG) : ""}</b> {s.task.title.replace(/^[^·]+· /, "")}
                       {s.batches > 1 && ` · tura ${s.batch}/${s.batches}`}
                       {s.task.tempC ? ` · ${s.task.tempC}°C` : ""} · {fmtDuration(s.end - s.start)}
-                      <span className="block text-xs text-muted-foreground">{s.task.recipeIds.map((r) => recipeNames[r]).join(" + ")}</span>
+                      <span className="block text-xs text-muted-foreground">{s.recipeIds.map((r) => recipeNames[r]).join(" + ")}</span>
                     </span>
                   </li>
                 ))}

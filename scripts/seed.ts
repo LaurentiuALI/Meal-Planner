@@ -35,7 +35,7 @@ async function main() {
   await db
     .insert(t.actions)
     .values(ACTIONS.map((a, sort) => ({ ...a, sort })))
-    .onConflictDoUpdate({ target: t.actions.id, set: { alternatives: sql`excluded.alternatives`, loadFactor: sql`excluded.load_factor` } });
+    .onConflictDoUpdate({ target: t.actions.id, set: { alternatives: sql`excluded.alternatives`, loadFactor: sql`excluded.load_factor`, mergeable: sql`excluded.mergeable` } });
   await db.insert(t.settings).values({ id: 1, value: DEFAULT_SETTINGS }).onConflictDoNothing();
 
   const generic = json<{ products: GenericRow[] }>("data/generic-ro.json").products;

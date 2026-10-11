@@ -126,4 +126,35 @@ describe("cooking session", () => {
     expect(p.noCook.map((x) => x.recipeId)).toEqual(["iaurt"]);
     expect(p.timeline.some((s) => s.task.recipeIds.includes("iaurt"))).toBe(false);
   });
+
+  it("does not portion what you eat on the cooking day", () => {
+    const p = plan([meal("2026-10-11", "cina", "burger"), meal("2026-10-12", "cina", "bowl")], "2026-10-11");
+    const portions = p.timeline.filter((s) => s.task.kind === "portion");
+    expect(portions.map((s) => s.task.recipeIds[0])).toEqual(["bowl"]);
+  });
+
+  it("keeps each recipe in its own batch when they do not fit together", () => {
+    const a = recipe("pui-a", [step("taie-carne", [["pui", 450]]), step("condimenteaza", [["ulei", 5]]), step("tigaie-pui", [])]);
+    const b = recipe("pui-b", [step("taie-carne", [["pui", 400]]), step("condimenteaza", [["ulei", 5]]), step("tigaie-pui", [])]);
+    recipes.set(a.id, a);
+    recipes.set(b.id, b);
+    const p = plan([meal("2026-10-12", "pranz", "pui-a"), meal("2026-10-12", "cina", "pui-b")]);
+    const cooks = p.timeline.filter((s) => s.task.kind === "cook" && s.inputs.some((l) => l.ingredientId === "pui"));
+    // Fiecare tură are o singură rețetă (împreună n-ar încăpea în tigaie / coș).
+    for (const c of cooks) expect(c.recipeIds).toHaveLength(1);
+    expect(p.timeline.filter((s) => s.task.actionId === "condimenteaza")).toHaveLength(2);
+    const chicken = cooks.flatMap((c) => c.inputs).filter((l) => l.ingredientId === "pui").reduce((x, l) => x + l.grams, 0);
+    expect(Math.round(chicken)).toBe(850);
+  });
+
+  it("never overfills the oven dishes", () => {
+    const tava = recipe("tava", [step("cuptor-pui", [["pui", 450]]), step("cuptor-legume", [["broccoli", 300]])]);
+    recipes.set(tava.id, tava);
+    const p = plan(["2026-10-12", "2026-10-13", "2026-10-14"].map((d) => meal(d, "cina", "tava")));
+    const cap = new Map(EQUIPMENT.map((e) => [e.id, e.capacityG ?? 0]));
+    for (const s of p.timeline.filter((x) => x.units.some((u) => u.startsWith("jena") || u.startsWith("vas-ceramic")))) {
+      const room = s.units.reduce((a, u) => a + (cap.get(u.split("#")[0]) ?? 0), 0);
+      expect(s.loadG * s.task.loadFactor).toBeLessThanOrEqual(room);
+    }
+  });
 });

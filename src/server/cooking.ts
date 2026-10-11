@@ -8,9 +8,10 @@ import { listKitchen } from "./recipes";
 export const sessionDateFor = (from: string) => (weekday(from) === 0 ? addDays(from, -1) : from);
 
 export async function getSession(from: string, to: string) {
-  const [meals, kitchen] = await Promise.all([mealsBetween(from, to), listKitchen()]);
-  const bundle = await bundleFor(meals);
   const sessionDate = sessionDateFor(from);
+  // Ce mănânci chiar în ziua în care gătești (cina de duminică) intră în aceeași sesiune.
+  const [meals, kitchen] = await Promise.all([mealsBetween(sessionDate < from ? sessionDate : from, to), listKitchen()]);
+  const bundle = await bundleFor(meals);
   const plan = planSession({
     meals,
     recipes: (id) => bundle.recipes[id],

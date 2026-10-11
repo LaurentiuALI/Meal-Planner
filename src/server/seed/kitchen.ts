@@ -47,7 +47,7 @@ export const ACTIONS: Action[] = [
   act({ id: "taie-ceapa", name: "Toacă ceapa / usturoiul", equipment: [], minutes: 2, activeMinutes: 2, perKgMinutes: 12 }),
   act({ id: "curata-cartofi", name: "Curăță și taie cartofii", equipment: [], minutes: 3, activeMinutes: 3, perKgMinutes: 7 }),
   act({ id: "taie-carne", name: "Taie carnea cuburi / fâșii", equipment: [], minutes: 2, activeMinutes: 2, perKgMinutes: 6 }),
-  act({ id: "condimenteaza", name: "Condimentează / marinează", equipment: [], minutes: 2, activeMinutes: 2, perKgMinutes: 1 }),
+  act({ id: "condimenteaza", name: "Condimentează / marinează", equipment: [], minutes: 2, activeMinutes: 2, perKgMinutes: 1, mergeable: false }),
   act({ id: "amesteca", name: "Amestecă într-un bol", equipment: [], minutes: 2, activeMinutes: 2, perKgMinutes: 1, mergeable: false }),
   act({ id: "asambleaza", name: "Asamblează (fără gătit)", equipment: [], minutes: 3, activeMinutes: 3, mergeable: false }),
 
