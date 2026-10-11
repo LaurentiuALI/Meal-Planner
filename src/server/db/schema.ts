@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, real, sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text, index, primaryKey } from "drizzle-orm/sqlite-core";
 import type { Portion, RecipeStep, Settings } from "@/domain/types";
 
 const timestamps = {
@@ -97,4 +97,17 @@ export const meals = sqliteTable(
     ...timestamps,
   },
   (t) => [index("meals_date_idx").on(t.date)],
+);
+
+/** Bifele de pe lista de cumpărături, pe interval („2026-10-12_2026-10-14”). */
+export const shoppingChecks = sqliteTable(
+  "shopping_checks",
+  {
+    listKey: text("list_key").notNull(),
+    ingredientId: text("ingredient_id").notNull(),
+    checked: integer("checked", { mode: "boolean" }).notNull(),
+    /** Ora de pe telefon, ca la sincronizare să câștige ultima bifă, nu ultima cerere. */
+    at: integer("at").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.listKey, t.ingredientId] })],
 );

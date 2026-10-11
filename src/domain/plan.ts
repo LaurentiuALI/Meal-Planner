@@ -92,3 +92,14 @@ export function shortDate(date: string) {
 export function today(tz = "Europe/Bucharest"): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
+
+/**
+ * Intervalul implicit pentru cumpărături/gătit: duminică–marți te pregătești pentru luni–miercuri
+ * (duminica, pentru săptămâna care începe mâine); miercuri–sâmbătă, pentru joi–vineri.
+ */
+export function defaultBlock(todayDate: string): { from: string; to: string } {
+  const wd = weekday(todayDate);
+  const monday = wd === 6 ? addDays(todayDate, 1) : mondayOf(todayDate);
+  if (wd === 6 || wd <= 1) return { from: monday, to: addDays(monday, 2) };
+  return { from: addDays(monday, 3), to: addDays(monday, 4) };
+}

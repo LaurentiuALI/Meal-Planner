@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Nav } from "@/components/nav";
+import { ServiceWorkerRegister } from "@/components/sw-register";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "latin-ext"] });
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <main className="flex-1 px-4 pt-4 pb-28 md:pb-10 md:pt-8">{children}</main>
         </div>
         <Toaster position="top-center" />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

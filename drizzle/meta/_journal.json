@@ -15,6 +15,13 @@
       "when": 1791729734762,
       "tag": "0001_simple_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791730016409,
+      "tag": "0002_cheerful_giant_girl",
+      "breakpoints": true
     }
   ]
 }
