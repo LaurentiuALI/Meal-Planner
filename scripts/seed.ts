@@ -3,6 +3,7 @@
  * și rețetele prestabilite. Idempotent: ce există deja nu e suprascris.
  */
 import { mkdirSync, readFileSync } from "node:fs";
+import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { connect } from "../src/server/db/connect";
 import * as t from "../src/server/db/schema";
@@ -30,7 +31,11 @@ async function main() {
   await migrate(db, { migrationsFolder: "drizzle" });
 
   await db.insert(t.equipment).values(EQUIPMENT.map((e, sort) => ({ ...e, sort }))).onConflictDoNothing();
-  await db.insert(t.actions).values(ACTIONS.map((a, sort) => ({ ...a, sort }))).onConflictDoNothing();
+  // Câmpurile „de sistem” ale acțiunilor se actualizează; timpii și capacitățile editate de tine rămân.
+  await db
+    .insert(t.actions)
+    .values(ACTIONS.map((a, sort) => ({ ...a, sort })))
+    .onConflictDoUpdate({ target: t.actions.id, set: { alternatives: sql`excluded.alternatives`, loadFactor: sql`excluded.load_factor` } });
   await db.insert(t.settings).values({ id: 1, value: DEFAULT_SETTINGS }).onConflictDoNothing();
 
   const generic = json<{ products: GenericRow[] }>("data/generic-ro.json").products;

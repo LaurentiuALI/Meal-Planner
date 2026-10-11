@@ -34,8 +34,9 @@ export function formatAmount(amount: number, unit: string, ing?: Ingredient) {
 }
 
 export function minutes(m: number) {
-  if (m < 60) return `${Math.round(m)} min`;
-  const h = Math.floor(m / 60);
-  const r = Math.round(m % 60);
+  const total = Math.round(m);
+  if (total < 60) return `${total} min`;
+  const h = Math.floor(total / 60);
+  const r = total % 60;
   return r ? `${h} h ${r} min` : `${h} h`;
 }

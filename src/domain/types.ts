@@ -103,12 +103,16 @@ export type Action = {
   /** Minute active în plus pe kg (tocat, curățat), peste valoarea de bază. */
   perKgMinutes: number;
   tempC: number | null;
+  /** De câte ori mai mult volum ocupă în vas decât greutatea crudă (orez cu apă ≈ 3). */
+  loadFactor: number;
   /** Cât încape într-o tură pentru acțiunea asta; `null` = capacitatea ustensilei. */
   capacityG: number | null;
   /** Timpul se repetă pentru fiecare tură când cantitatea depășește capacitatea. */
   perBatch: boolean;
   /** Se poate face o singură dată pentru mai multe rețete (aceleași setări). */
   mergeable: boolean;
+  /** Alte acțiuni care dau același rezultat (airfryer ↔ cuptor ↔ tigaie); sesiunea alege cea mai rapidă. */
+  alternatives: string[];
   hint: string | null;
 };
 

@@ -1,0 +1,1 @@
+ALTER TABLE `actions` ADD `load_factor` real DEFAULT 1 NOT NULL;

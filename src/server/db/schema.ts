@@ -52,8 +52,10 @@ export const actions = sqliteTable("actions", {
   perKgMinutes: real("per_kg_minutes").notNull().default(0),
   tempC: integer("temp_c"),
   capacityG: real("capacity_g"),
+  loadFactor: real("load_factor").notNull().default(1),
   perBatch: integer("per_batch", { mode: "boolean" }).notNull().default(false),
   mergeable: integer("mergeable", { mode: "boolean" }).notNull().default(true),
+  alternatives: text("alternatives", { mode: "json" }).$type<string[]>().notNull().default([]),
   hint: text("hint"),
   sort: integer("sort").notNull().default(0),
 });

@@ -1,0 +1,1 @@
+ALTER TABLE `actions` ADD `alternatives` text DEFAULT '[]' NOT NULL;
