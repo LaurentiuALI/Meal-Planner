@@ -77,3 +77,24 @@ export const settings = sqliteTable("settings", {
   id: integer("id").primaryKey(),
   value: text("value", { mode: "json" }).$type<Settings>().notNull(),
 });
+
+export const meals = sqliteTable(
+  "meals",
+  {
+    id: text("id").primaryKey(),
+    date: text("date").notNull(),
+    slot: text("slot", { enum: ["pranz", "gustare", "cina", "extra"] }).notNull(),
+    recipeId: text("recipe_id"),
+    ingredientId: text("ingredient_id"),
+    grams: real("grams"),
+    servings: real("servings").notNull().default(1),
+    /** lineId → grame per porție, setate manual (bat solverul). */
+    pinned: text("pinned", { mode: "json" }).$type<Record<string, number>>().notNull().default({}),
+    /** lineId → grame per porție, calculate de solver. */
+    solved: text("solved", { mode: "json" }).$type<Record<string, number>>().notNull().default({}),
+    status: text("status", { enum: ["planned", "eaten", "skipped"] }).notNull().default("planned"),
+    sort: integer("sort").notNull().default(0),
+    ...timestamps,
+  },
+  (t) => [index("meals_date_idx").on(t.date)],
+);
