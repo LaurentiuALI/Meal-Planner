@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildShoppingList } from "./shopping";
+import { itemCost, parseLidlSize } from "./prices";
 import type { Meal } from "./plan";
 import type { Ingredient, Recipe } from "./types";
 
@@ -48,5 +49,19 @@ describe("shopping list", () => {
   });
   it("puts staples last and sorts by aisle", () => {
     expect(list.map((i) => i.ingredient.id)).toEqual(["cartofi", "iaurt", "pui", "sare"]);
+  });
+});
+
+describe("Lidl prices", () => {
+  it.each([
+    ["per kg", 1000],
+    ["500g", 500],
+    ["2x125g", 250],
+    ["1,5l", 1500],
+    ["330ml", 330],
+  ])("%s", (raw, grams) => expect(parseLidlSize(raw).grams).toBe(grams));
+  it("treats pieces separately and costs whole packs", () => {
+    expect(parseLidlSize("1Stk.")).toEqual({ grams: null, pieces: 1 });
+    expect(itemCost({ buyG: 1000 }, { priceRon: 12.99, priceGrams: 500 })).toBeCloseTo(25.98);
   });
 });

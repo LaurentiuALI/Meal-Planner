@@ -25,6 +25,7 @@ function useSessionState(key: string) {
   const [state, setState] = useState<State>(EMPTY);
   useEffect(() => {
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage există doar după hidratare
       setState({ ...EMPTY, ...JSON.parse(localStorage.getItem(storageKey) ?? "{}") });
     } catch {
       setState(EMPTY);

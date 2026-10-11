@@ -2,6 +2,8 @@ import { PageHeader } from "@/components/macros";
 import { RangePicker } from "@/components/range-picker";
 import { bundleFor, mealsBetween } from "@/server/plan";
 import { getChecks } from "@/server/shopping";
+import { lidlPricesAge, pricesFor, refreshLidlPricesIfStale } from "@/server/prices";
+import { itemCost } from "@/domain/prices";
 import { buildShoppingList } from "@/domain/shopping";
 import { defaultBlock, today } from "@/domain/plan";
 import { ShoppingList, type ListItem } from "./shopping-list";
@@ -16,8 +18,10 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
   const range = isDate(sp.from) && isDate(sp.to) && sp.from! <= sp.to! ? { from: sp.from!, to: sp.to! } : defaultBlock(today());
   const listKey = `${range.from}_${range.to}`;
   const bundle = await bundleFor(await mealsBetween(range.from, range.to));
-  const [checks] = await Promise.all([getChecks(listKey)]);
-  const items: ListItem[] = buildShoppingList(bundle.meals, (id) => bundle.recipes[id], (id) => bundle.ingredients[id]).map((i) => ({
+  refreshLidlPricesIfStale();
+  const list = buildShoppingList(bundle.meals, (id) => bundle.recipes[id], (id) => bundle.ingredients[id]);
+  const [checks, prices, pricesAt] = await Promise.all([getChecks(listKey), pricesFor(list.map((i) => i.ingredient.id)), lidlPricesAge()]);
+  const items: ListItem[] = list.map((i) => ({
     id: i.ingredient.id,
     name: i.ingredient.name,
     brand: i.ingredient.brand,
@@ -32,13 +36,20 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
     surplusG: i.surplusG,
     pieces: i.pieces,
     usedIn: i.usedIn,
+    cost: itemCost(i, prices.get(i.ingredient.id) ?? null),
   }));
 
   return (
     <>
       <PageHeader title="Cumpărături" />
       <RangePicker basePath="/cumparaturi" from={range.from} to={range.to} />
-      <ShoppingList listKey={listKey} items={items} serverChecks={checks} mealCount={bundle.meals.filter((m) => m.status !== "skipped").length} />
+      <ShoppingList
+        listKey={listKey}
+        items={items}
+        serverChecks={checks}
+        mealCount={bundle.meals.filter((m) => m.status !== "skipped").length}
+        pricesAt={pricesAt?.toISOString() ?? null}
+      />
     </>
   );
 }

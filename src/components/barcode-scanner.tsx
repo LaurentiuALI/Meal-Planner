@@ -14,11 +14,16 @@ export function BarcodeScanner({ open, onOpenChange, onCode }: { open: boolean; 
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState("");
 
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setError(null);
+  }
+
   useEffect(() => {
     if (!open) return;
     let stop: (() => void) | undefined;
     let cancelled = false;
-    setError(null);
     (async () => {
       try {
         const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);

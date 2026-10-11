@@ -75,3 +75,33 @@ export function buildShoppingList(meals: Meal[], recipes: (id: string) => Recipe
       a.ingredient.name.localeCompare(b.ingredient.name, "ro"),
   );
 }
+
+export type LeftoverSuggestion = { recipe: Recipe; usedG: number; uses: { name: string; grams: number }[] };
+
+/**
+ * Rețetele care consumă cel mai mult din ce rămâne după un interval (pachete începute).
+ * Ordinea: grame folosite din resturi, apoi rețetele nefolosite de mult (`lastUsed` crescător).
+ */
+export function suggestFromLeftovers(
+  candidates: Recipe[],
+  surplus: Map<string, number>,
+  lookup: IngredientLookup,
+  lastUsed: Map<string, string> = new Map(),
+): LeftoverSuggestion[] {
+  return candidates
+    .map((recipe) => {
+      const uses: { name: string; grams: number }[] = [];
+      let usedG = 0;
+      for (const l of recipeLines(recipe)) {
+        const left = surplus.get(l.ingredientId) ?? 0;
+        if (left < 20) continue;
+        const need = lineServingGrams(recipe, l, lookup);
+        const g = Math.min(left, need);
+        if (g <= 0) continue;
+        usedG += g;
+        uses.push({ name: lookup(l.ingredientId)?.name ?? "?", grams: left });
+      }
+      return { recipe, usedG, uses };
+    })
+    .sort((a, b) => b.usedG - a.usedG || (lastUsed.get(a.recipe.id) ?? "").localeCompare(lastUsed.get(b.recipe.id) ?? ""));
+}

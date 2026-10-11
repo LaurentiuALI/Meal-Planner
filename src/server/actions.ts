@@ -8,6 +8,7 @@ import * as t from "./db/schema";
 import {
   deleteIngredient,
   getIngredients,
+  invalidateIngredientIndex,
   lookupBarcode,
   saveIngredient,
   searchIngredients,
@@ -15,6 +16,8 @@ import {
 } from "./ingredients";
 import { archiveRecipe, saveRecipe } from "./recipes";
 import { saveSettings } from "./settings";
+import { importAll, type BackupFile } from "./backup";
+import { linkLidlPrice, refreshLidlPrices, searchLidlPrices, setManualPrice } from "./prices";
 import { parseLines } from "@/domain/parse-lines";
 import { isConfident } from "@/domain/match";
 import { AISLE_IDS } from "@/domain/aisles";
@@ -183,4 +186,48 @@ export async function saveSettingsAction(s: Settings) {
   await saveSettings(parsed.data);
   revalidatePath("/", "layout");
   return { ok: true as const };
+}
+
+// ─── Prețuri ───
+
+export async function searchLidlAction(query: string) {
+  return (await searchLidlPrices(query)).map((r) => ({ ref: r.ref, name: r.name, size: r.size, price: r.price, grams: r.grams }));
+}
+
+export async function linkLidlAction(ingredientId: string, ref: string) {
+  try {
+    await linkLidlPrice(ingredientId, ref);
+    revalidatePath(`/ingrediente/${ingredientId}`);
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+export async function manualPriceAction(ingredientId: string, priceRon: number | null, priceGrams: number | null) {
+  await setManualPrice(ingredientId, priceRon, priceGrams);
+  revalidatePath(`/ingrediente/${ingredientId}`);
+}
+
+export async function refreshPricesAction() {
+  try {
+    const { count } = await refreshLidlPrices();
+    revalidatePath("/cumparaturi");
+    return { ok: true as const, count };
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+// ─── Backup ───
+
+export async function importBackupAction(json: string) {
+  try {
+    await importAll(JSON.parse(json) as BackupFile);
+    invalidateIngredientIndex();
+    revalidatePath("/", "layout");
+    return { ok: true as const };
+  } catch (e) {
+    return { ok: false as const, error: e instanceof Error ? e.message : "Fișier invalid" };
+  }
 }

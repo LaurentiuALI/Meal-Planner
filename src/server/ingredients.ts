@@ -72,7 +72,12 @@ export async function getIngredients(ids: string[]): Promise<Map<string, Ingredi
 
 export async function getIngredient(id: string) {
   const [row] = await db.select().from(t.ingredients).where(eq(t.ingredients.id, id));
-  return row ? { ...rowToIngredient(row), inLibrary: row.inLibrary } : null;
+  if (!row) return null;
+  const price =
+    row.priceRon != null && row.priceGrams != null
+      ? { priceRon: row.priceRon, priceGrams: row.priceGrams, source: row.priceSource, ref: row.priceRef, at: row.priceAt?.toISOString() ?? null }
+      : null;
+  return { ...rowToIngredient(row), inLibrary: row.inLibrary, price };
 }
 
 export async function listLibrary() {

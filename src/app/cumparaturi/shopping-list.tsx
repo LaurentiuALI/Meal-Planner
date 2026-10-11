@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check, ClipboardCopy, CloudOff } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { grams } from "@/lib/format";
 import { AISLES } from "@/domain/aisles";
 import { syncChecksAction } from "@/server/shopping-actions";
+import { refreshPricesAction } from "@/server/actions";
+import { lei } from "@/domain/prices";
 
 export type ListItem = {
   id: string;
@@ -25,6 +28,7 @@ export type ListItem = {
   surplusG: number;
   pieces: number | null;
   usedIn: string[];
+  cost: number | null;
 };
 
 type Checks = Record<string, { checked: boolean; at: number }>;
@@ -80,6 +84,7 @@ function useChecks(listKey: string, serverChecks: Checks) {
     const local = { ...read(storeKey), ...read(pendingKey) };
     const merged: Checks = { ...serverChecks };
     for (const [id, c] of Object.entries(local)) if (!merged[id] || merged[id].at < c.at) merged[id] = c;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage există doar după hidratare
     setChecks(merged);
     write(storeKey, merged);
     flush();
@@ -100,7 +105,21 @@ function useChecks(listKey: string, serverChecks: Checks) {
   return { checks, toggle, offline };
 }
 
-export function ShoppingList({ listKey, items, serverChecks, mealCount }: { listKey: string; items: ListItem[]; serverChecks: Checks; mealCount: number }) {
+export function ShoppingList({
+  listKey,
+  items,
+  serverChecks,
+  mealCount,
+  pricesAt,
+}: {
+  listKey: string;
+  items: ListItem[];
+  serverChecks: Checks;
+  mealCount: number;
+  pricesAt: string | null;
+}) {
+  const router = useRouter();
+  const [refreshing, startRefresh] = useTransition();
   const { checks, toggle, offline } = useChecks(listKey, serverChecks);
   const isChecked = (id: string) => !!checks[id]?.checked;
 
@@ -111,6 +130,8 @@ export function ShoppingList({ listKey, items, serverChecks, mealCount }: { list
   const staples = items.filter((i) => i.staple);
   const done = items.filter((i) => !i.staple && isChecked(i.id)).length;
   const total = items.filter((i) => !i.staple).length;
+  const priced = items.filter((i) => !i.staple && i.cost != null);
+  const cost = priced.reduce((a, i) => a + i.cost!, 0);
 
   const copy = async () => {
     const text = groups
@@ -149,6 +170,33 @@ export function ShoppingList({ listKey, items, serverChecks, mealCount }: { list
         <Button size="sm" variant="outline" onClick={copy}>
           <ClipboardCopy /> Copiază
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm">
+        <span>
+          {priced.length ? (
+            <>
+              ~<b>{lei(cost)}</b>
+              {priced.length < total && <span className="text-muted-foreground"> pentru {priced.length} din {total} produse cu preț</span>}
+            </>
+          ) : (
+            <span className="text-muted-foreground">Fără prețuri încă: leagă produsele de prețurile Lidl din pagina lor.</span>
+          )}
+        </span>
+        <button
+          disabled={refreshing}
+          onClick={() =>
+            startRefresh(async () => {
+              const res = await refreshPricesAction();
+              if (res.ok) toast.success(`${res.count} prețuri Lidl actualizate`);
+              else toast.error(res.error);
+              router.refresh();
+            })
+          }
+          className="text-xs text-muted-foreground underline disabled:opacity-50"
+        >
+          {refreshing ? "se actualizează…" : pricesAt ? `Lidl: ${new Date(pricesAt).toLocaleDateString("ro-RO")} · actualizează` : "descarcă prețurile Lidl"}
+        </button>
       </div>
 
       {groups.map((g) => (
@@ -199,7 +247,8 @@ function Row({ item: i, checked, onToggle, compact }: { item: ListItem; checked:
           {!compact && (
             <span className="mt-0.5 block text-xs text-muted-foreground">
               trebuie {grams(i.needG)}
-              {i.surplusG >= 20 && ` · rămân ${grams(i.surplusG)}`} · {i.usedIn.join(", ")}
+              {i.surplusG >= 20 && ` · rămân ${grams(i.surplusG)}`}
+              {i.cost != null && ` · ~${lei(i.cost)}`} · {i.usedIn.join(", ")}
             </span>
           )}
         </span>

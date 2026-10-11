@@ -29,6 +29,13 @@ export const ingredients = sqliteTable(
     barcode: text("barcode").unique(),
     /** Ingredientele „tale” (create, importate sau folosite), față de catalogul brut. */
     inLibrary: integer("in_library", { mode: "boolean" }).notNull().default(false),
+    /** Prețul (lei) pentru `priceGrams` grame; din fișierul Lidl sau introdus de tine. */
+    priceRon: real("price_ron"),
+    priceGrams: real("price_grams"),
+    priceSource: text("price_source", { enum: ["lidl", "manual"] }),
+    /** Linia din fișierul Lidl de care e legat produsul („Denumire|Gramaj”). */
+    priceRef: text("price_ref"),
+    priceAt: integer("price_at", { mode: "timestamp" }),
     ...timestamps,
   },
   (t) => [index("ingredients_library_idx").on(t.inLibrary)],
@@ -113,3 +120,15 @@ export const shoppingChecks = sqliteTable(
   },
   (t) => [primaryKey({ columns: [t.listKey, t.ingredientId] })],
 );
+
+/** Prețurile zilnice Lidl (preturiZilniceLidl.xlsb), înlocuite la fiecare actualizare. */
+export const lidlPrices = sqliteTable("lidl_prices", {
+  ref: text("ref").primaryKey(),
+  name: text("name").notNull(),
+  size: text("size").notNull(),
+  category: text("category").notNull(),
+  price: real("price").notNull(),
+  /** Gramele la care se referă prețul; `null` pentru prețul pe bucată. */
+  grams: real("grams"),
+  fetchedAt: integer("fetched_at", { mode: "timestamp" }).notNull(),
+});

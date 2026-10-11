@@ -29,7 +29,7 @@ export function PlanWeek({
   today: string;
   bundle: PlanBundle;
   settings: Settings;
-  suggestions: { id: string; name: string }[];
+  suggestions: { id: string; name: string; uses: string[] }[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -238,9 +238,10 @@ export function PlanWeek({
                       key={s.id}
                       disabled={pending}
                       onClick={() => run(() => addMealAction({ date, slot: "cina", recipeId: s.id }), `${s.name} → cină`)}
-                      className="rounded-full border px-2.5 py-1 text-xs hover:bg-muted"
+                      className="rounded-2xl border px-2.5 py-1 text-left text-xs hover:bg-muted"
                     >
                       {s.name}
+                      {s.uses.length > 0 && <span className="block text-[10px] text-primary">folosește resturile: {s.uses.slice(0, 2).join(", ")}</span>}
                     </button>
                   ))}
                 </div>
@@ -258,7 +259,7 @@ export function PlanWeek({
           onClose={() => setOpenMeal(null)}
         />
       )}
-      <AddMealDialog target={adding} onClose={() => setAdding(null)} />
+      <AddMealDialog key={adding ? `${adding.date}-${adding.slot}` : "closed"} target={adding} onClose={() => setAdding(null)} />
     </div>
   );
 }

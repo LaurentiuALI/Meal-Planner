@@ -36,10 +36,7 @@ export function AddMealDialog({ target, onClose }: { target: { date: string; slo
   const [pending, start] = useTransition();
 
   useEffect(() => {
-    if (!target) return;
-    setQuery("");
-    setProduct(null);
-    if (!cache) recipeChoicesAction().then((c) => setChoices((cache = c)));
+    if (target && !cache) recipeChoicesAction().then((c) => setChoices((cache = c)));
   }, [target]);
 
   const list = useMemo(() => {

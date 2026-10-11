@@ -33,12 +33,6 @@ export function rowToRecipe(r: typeof t.recipes.$inferSelect): Recipe {
   };
 }
 
-export const rowToAction = (r: typeof t.actions.$inferSelect): Action => {
-  const { sort: _sort, ...a } = r;
-  return a;
-};
+export const rowToAction = ({ sort, ...a }: typeof t.actions.$inferSelect): Action => (void sort, a);
 
-export const rowToEquipment = (r: typeof t.equipment.$inferSelect): Equipment => {
-  const { sort: _sort, ...e } = r;
-  return e;
-};
+export const rowToEquipment = ({ sort, ...e }: typeof t.equipment.$inferSelect): Equipment => (void sort, e);

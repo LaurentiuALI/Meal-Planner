@@ -8,6 +8,7 @@ import { getSettings } from "./settings";
 import { listRecipes } from "./recipes";
 import { addDays, mondayOf, weekDates, type Meal, type MealSlot } from "@/domain/plan";
 import { solve } from "@/domain/solver";
+import { buildShoppingList, suggestFromLeftovers } from "@/domain/shopping";
 import type { Ingredient, Recipe } from "@/domain/types";
 
 const rowToMeal = (r: typeof t.meals.$inferSelect): Meal => ({
@@ -175,14 +176,28 @@ export async function proposeWeek(monday: string) {
   await resolveWeekOf(monday);
 }
 
-/** Sugestii pentru joi–vineri: rețete rapide, cele nefolosite de mult primele. */
+/**
+ * Sugestii pentru joi–vineri: rețete rapide, întâi cele care folosesc ce rămâne din pachetele
+ * cumpărate pentru luni–miercuri, apoi cele nefolosite de mult.
+ */
 export async function quickSuggestions(monday: string, limit = 3) {
-  const [recipes, history] = await Promise.all([listRecipes(), mealsBetween(addDays(monday, -28), addDays(monday, 6))]);
+  const [recipes, history, block] = await Promise.all([
+    listRecipes(),
+    mealsBetween(addDays(monday, -28), addDays(monday, 6)),
+    mealsBetween(monday, addDays(monday, 2)),
+  ]);
   const lastUsed = new Map<string, string>();
   for (const m of history) if (m.recipeId) lastUsed.set(m.recipeId, m.date);
-  return recipes
-    .filter((r) => r.category === "rapid")
-    .sort((a, b) => (lastUsed.get(a.id) ?? "").localeCompare(lastUsed.get(b.id) ?? ""))
+  const rapid = recipes.filter((r) => r.category === "rapid");
+  const bundle = await bundleFor([...block, ...rapid.map((r) => ({ id: r.id, date: monday, slot: "cina" as const, recipeId: r.id, ingredientId: null, grams: null, servings: 1, pinned: {}, solved: {}, status: "skipped" as const, sort: 0 }))]);
+  const lookup = (id: string) => bundle.ingredients[id];
+  // Doar pachetele începute sunt resturi reale; rotunjirea la vrac (550 g în loc de 510 g) nu contează.
+  const surplus = new Map(
+    buildShoppingList(block, (id) => bundle.recipes[id], lookup)
+      .filter((i) => i.packs)
+      .map((i) => [i.ingredient.id, i.surplusG]),
+  );
+  return suggestFromLeftovers(rapid, surplus, lookup, lastUsed)
     .slice(0, limit)
-    .map((r) => ({ id: r.id, name: r.name }));
+    .map((s) => ({ id: s.recipe.id, name: s.recipe.name, uses: s.uses.map((u) => u.name) }));
 }

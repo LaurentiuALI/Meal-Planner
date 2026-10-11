@@ -478,7 +478,7 @@ export function schedule(jobs: Job[], equipment: Equipment[]): Scheduled[] {
         continue;
       }
       const isOven = candidates.some((u) => u.kind === "cuptor");
-      const ok = candidates.filter(free).filter((u) => {
+      const ok = candidates.filter(free).filter(() => {
         if (!isOven) return true;
         const o = ovenTemp.get("cuptor");
         return !o || o.until <= now || o.temp == null || j.task.tempC == null || Math.abs(o.temp - j.task.tempC) <= 10;

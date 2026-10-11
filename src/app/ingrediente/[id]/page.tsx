@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/macros";
 import { getIngredient, ingredientUsage } from "@/server/ingredients";
 import { aisleLabel } from "@/domain/aisles";
 import { IngredientForm } from "../ingredient-form";
+import { PriceSection } from "./price-section";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ id:
   const ing = await getIngredient(id);
   if (!ing) notFound();
   const usedIn = await ingredientUsage(id);
-  const { inLibrary, ...input } = ing;
+  const { inLibrary, price, ...input } = ing;
 
   return (
     <>
@@ -36,6 +37,7 @@ export default async function IngredientPage({ params }: { params: Promise<{ id:
         </p>
       )}
       <IngredientForm initial={input} />
+      <PriceSection ingredientId={ing.id} name={ing.name} current={price} />
     </>
   );
 }

@@ -48,6 +48,7 @@ export function IngredientForm({ initial, fromDraft = false }: { initial: Ingred
     if (!fromDraft) return;
     const raw = sessionStorage.getItem("ingredient-draft");
     if (raw) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage există doar după hidratare
       setV({ ...blankIngredient(), ...JSON.parse(raw) });
       setKey((k) => k + 1);
       sessionStorage.removeItem("ingredient-draft");

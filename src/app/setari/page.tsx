@@ -3,6 +3,7 @@ import { ChevronRight, CookingPot } from "lucide-react";
 import { PageHeader } from "@/components/macros";
 import { getSettings } from "@/server/settings";
 import { SettingsForm } from "./settings-form";
+import { BackupSection } from "./backup-section";
 
 export const metadata = { title: "Setări" };
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function SettingsPage() {
           </span>
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+        <BackupSection />
       </div>
     </>
   );

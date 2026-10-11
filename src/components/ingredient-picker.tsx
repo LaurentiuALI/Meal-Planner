@@ -6,7 +6,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { searchAction } from "@/server/actions";
-import type { IngredientHit } from "@/server/ingredients";
 
 type Hit = Awaited<ReturnType<typeof searchAction>>[number];
 
@@ -29,9 +28,11 @@ export function IngredientPicker({
   const [pending, start] = useTransition();
   const seq = useRef(0);
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) setQuery(initialQuery);
-  }, [open, initialQuery]);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -96,4 +97,3 @@ export function IngredientPicker({
   );
 }
 
-export type { IngredientHit };

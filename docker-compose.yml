@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    # Doar local: din afară se ajunge prin `tailscale serve` (HTTPS), vezi DEPLOY.md.
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - TZ=Europe/Bucharest
+    volumes:
+      - ./var:/app/var
+      - ./backups:/app/backups
