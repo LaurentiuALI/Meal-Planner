@@ -43,7 +43,7 @@ La pornirile următoare se aplică doar migrările. Ce ai modificat tu nu e supr
 ## 4. HTTPS prin Tailscale
 
 ```bash
-sudo tailscale serve --bg 3000
+sudo tailscale serve --bg --https=443 http://localhost:3030
 tailscale serve status   # îți arată adresa, ex. https://legion.tail1234.ts.net
 ```
 

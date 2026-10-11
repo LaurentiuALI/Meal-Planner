@@ -1,12 +1,24 @@
 services:
   app:
     build: .
+    container_name: meal-planner
     restart: unless-stopped
-    # Doar local: din afară se ajunge prin `tailscale serve` (HTTPS), vezi DEPLOY.md.
+    # Pe toate interfețele, ca să meargă și de pe telefon din rețeaua de acasă;
+    # din afară se ajunge prin `tailscale serve` (HTTPS), vezi DEPLOY.md.
     ports:
-      - "127.0.0.1:3000:3000"
+      - "3030:3000"
     environment:
       - TZ=Europe/Bucharest
     volumes:
       - ./var:/app/var
       - ./backups:/app/backups
+    labels:
+      laurhub.enable: "true"
+      laurhub.name: "Meal Planner"
+      laurhub.description: "Plan de mese, macro-uri, listă de cumpărături și sesiunea de gătit"
+      laurhub.icon: "🥗"
+      laurhub.color: "#16a34a"
+      laurhub.category: "Casă"
+      laurhub.port: "3030"
+      laurhub.path: "/plan"
+      laurhub.widget: "/api/hub"
