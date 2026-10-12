@@ -1,6 +1,6 @@
 import { recipeLines, type IngredientLookup } from "./macros";
 import { daysBetween, lineServingGrams, type Meal } from "./plan";
-import type { Action, Equipment, Recipe } from "./types";
+import type { Action, Equipment, Recipe, ToTaste } from "./types";
 
 /**
  * Sesiunea de gătit: din mesele unui interval face un plan de lucru.
@@ -14,7 +14,7 @@ import type { Action, Equipment, Recipe } from "./types";
  *    Între un vas curat liber acum și unul deja murdar liber în ≤5 minute, îl așteptăm pe cel murdar.
  */
 
-export type CookLine = { recipeId: string; ingredientId: string; name: string; grams: number };
+export type CookLine = { recipeId: string; ingredientId: string; name: string; grams: number; toTaste?: ToTaste | null };
 
 export type Task = {
   id: string;
@@ -148,6 +148,7 @@ function buildTasks(input: CookInput) {
         ingredientId: l.ingredientId,
         name: lookup(l.ingredientId)?.name ?? "?",
         grams: lineGrams.get(l.id) ?? 0,
+        toTaste: lookup(l.ingredientId)?.toTaste ?? null,
       }));
       const own = lines.reduce((a, l) => a + l.grams, 0);
       const isPrep = !action || action.equipment.length === 0;
@@ -780,8 +781,9 @@ export function planSession(input: CookInput): SessionPlan {
       servings,
       days,
       perServing: [...perIngredient]
-        .map(([id, g]) => ({ name: input.lookup(id)?.name ?? "?", grams: g }))
-        .filter((x) => x.grams >= 5)
+        .map(([id, g]) => ({ name: input.lookup(id)?.name ?? "?", grams: g, toTaste: input.lookup(id)?.toTaste }))
+        // Condimentele și uleiul nu se împart la gram.
+        .filter((x) => x.grams >= 5 && !x.toTaste)
         .sort((a, b) => b.grams - a.grams),
       warnings: w,
     };

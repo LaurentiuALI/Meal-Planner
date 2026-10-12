@@ -15,6 +15,7 @@ export type IngredientHit = Candidate & {
   packLabel: string | null;
   source: Ingredient["source"];
   verified: boolean;
+  toTaste: Ingredient["toTaste"];
 };
 
 /**
@@ -43,6 +44,7 @@ async function loadIndex(): Promise<IngredientHit[]> {
     packLabel: r.packLabel,
     source: r.source,
     verified: r.verified,
+    toTaste: r.toTaste,
     per100: { kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, fiber: r.fiber },
   }));
   return index;
@@ -121,6 +123,7 @@ export async function saveIngredient(input: IngredientInput): Promise<string> {
     barcode: input.barcode?.trim() || null,
     inLibrary: true,
     verified: input.verified ?? false,
+    toTaste: input.toTaste ?? null,
     updatedAt: new Date(),
   };
   if (input.id) {

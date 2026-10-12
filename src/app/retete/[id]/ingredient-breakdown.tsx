@@ -3,6 +3,7 @@ import { AlertTriangle, ChevronRight } from "lucide-react";
 import { MacroLine } from "@/components/macros";
 import { grams, num } from "@/lib/format";
 import { kcalFrom, macrosOf, sum } from "@/domain/macros";
+import { TASTE_LABEL } from "@/domain/taste";
 import type { Ingredient, Recipe } from "@/domain/types";
 
 const SOURCE: Record<Ingredient["source"], string> = {
@@ -40,7 +41,7 @@ export function IngredientBreakdown({
     .sort((a, b) => (b.m?.kcal ?? 0) - (a.m?.kcal ?? 0));
   const total = sum(rows.flatMap((r) => (r.m ? [r.m] : [])));
   // Ce contează pentru total: ingredientele neverificate care aduc cel puțin 2% din calorii.
-  const doubtful = rows.filter((r) => unverified.has(r.id) && r.m && total.kcal > 0 && r.m.kcal / total.kcal >= 0.02);
+  const doubtful = rows.filter((r) => unverified.has(r.id) && !r.ing?.toTaste && r.m && total.kcal > 0 && r.m.kcal / total.kcal >= 0.02);
   const doubtfulShare = doubtful.reduce((a, r) => a + (r.m?.kcal ?? 0), 0) / Math.max(1, total.kcal);
   const flexible = new Set(recipe.steps.flatMap((s) => s.lines.filter((l) => l.flex).map((l) => l.ingredientId)));
 
@@ -76,13 +77,13 @@ export function IngredientBreakdown({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 truncate text-sm font-medium">
-                      {unverified.has(id) && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Neverificat" />}
+                      {unverified.has(id) && !ing.toTaste && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Neverificat" />}
                       {ing.name}
                       {ing.brand && <span className="font-normal text-muted-foreground"> · {ing.brand}</span>}
                     </span>
                     <span className="shrink-0 text-sm tabular-nums">
                       {flexible.has(id) && <span className="mr-1 text-xs text-primary" title="Solverul ajustează cantitatea">↕</span>}
-                      {grams(g)}
+                      {ing.toTaste ? <span className="text-muted-foreground">{TASTE_LABEL[ing.toTaste]}</span> : grams(g)}
                     </span>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
@@ -90,7 +91,7 @@ export function IngredientBreakdown({
                       <div className="h-full rounded-full bg-primary" style={{ width: `${share}%` }} />
                     </div>
                     <span className="w-24 shrink-0 text-right text-xs tabular-nums">
-                      <b>{Math.round(m.kcal)} kcal</b> <span className="text-muted-foreground">{Math.round(share)}%</span>
+                      <b>{ing.toTaste && "~"}{Math.round(m.kcal)} kcal</b> <span className="text-muted-foreground">{Math.round(share)}%</span>
                     </span>
                   </div>
                   <div className="mt-0.5 flex flex-wrap gap-x-2.5 text-xs tabular-nums">
@@ -101,8 +102,11 @@ export function IngredientBreakdown({
                   </div>
                   <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                     la 100 g: {Math.round(p.kcal)} kcal · P {num(p.protein)} · C {num(p.carbs)} · G {num(p.fat)} · F {p.fiber == null ? "?" : num(p.fiber)} · {SOURCE[ing.source]}
-                    {unverified.has(id) ? <span className="text-amber-600"> · neverificat</span> : <span className="text-primary"> · verificat ✓</span>}
+                    {!ing.toTaste && (unverified.has(id) ? <span className="text-amber-600"> · neverificat</span> : <span className="text-primary"> · verificat ✓</span>)}
                   </div>
+                  {ing.toTaste && (
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">Nu-l cântărești; în calcul intră ~{grams(g)}, cât pui de obicei.</div>
+                  )}
                   {kcalOff && (
                     <div className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-600">
                       <AlertTriangle className="size-3" /> Caloriile nu se potrivesc cu macro-urile ({Math.round(kcalFrom(p))} kcal calculat)

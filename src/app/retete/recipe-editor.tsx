@@ -14,6 +14,7 @@ import { MacroLine } from "@/components/macros";
 import { IngredientPicker } from "@/components/ingredient-picker";
 import { ingredientsAction, parseRecipeTextAction, saveRecipeAction, type ParsedMatch } from "@/server/actions";
 import { lineGrams, recipePerServing } from "@/domain/macros";
+import { TASTE_LABEL } from "@/domain/taste";
 import { unitsFor, UnitError } from "@/domain/units";
 import { RECIPE_CATEGORIES, type Action, type Ingredient, type Recipe, type RecipeLine, type RecipeStep } from "@/domain/types";
 import { grams } from "@/lib/format";
@@ -302,6 +303,7 @@ function LineRow({
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         {unitError ? <span className="text-destructive">Unitatea nu e definită pentru produs</span> : g != null && line.unit !== "g" && <span>= {grams(g)}</span>}
+        {ingredient?.toTaste && <span>Apare ca „{TASTE_LABEL[ingredient.toTaste]}”; cantitatea e doar o estimare pentru calorii.</span>}
         {line.flex && (
           <span className="flex items-center gap-1">
             interval

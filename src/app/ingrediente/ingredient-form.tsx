@@ -140,6 +140,19 @@ export function IngredientForm({ initial, fromDraft = false, returnTo }: { initi
         <NumField label="Densitate (pentru ml)" suffix="g/ml" value={v.density} onChange={(n) => set({ density: n ?? 1 })} />
       </div>
 
+      <div className="space-y-1">
+        <Label className="text-xs">În rețete</Label>
+        <select
+          value={v.toTaste ?? ""}
+          onChange={(e) => set({ toTaste: (e.target.value || null) as IngredientInput["toTaste"] })}
+          className="h-9 w-full rounded-md border bg-transparent px-2 text-base md:text-sm"
+        >
+          <option value="">Se cântărește (apare cu grame)</option>
+          <option value="condiment">Condiment: „după gust”, fără grame</option>
+          <option value="ulei">Ulei: „puțin”, fără grame</option>
+        </select>
+      </div>
+
       <div className="flex flex-wrap gap-6 text-sm">
         <label className="flex items-center gap-2">
           <Switch checked={v.lidl} onCheckedChange={(c) => set({ lidl: c })} /> Îl iau de la Lidl

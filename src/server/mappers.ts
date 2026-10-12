@@ -17,6 +17,7 @@ export function rowToIngredient(r: typeof t.ingredients.$inferSelect): Ingredien
     lidl: r.lidl,
     source: r.source,
     barcode: r.barcode,
+    toTaste: r.toTaste,
   };
 }
 

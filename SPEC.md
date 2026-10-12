@@ -55,6 +55,7 @@ Rescriere de la zero, stabilită pe 2026-10-11. Documentul ăsta e sursa de adev
 - **Pași ordonați.** Fiecare pas are opțional o acțiune (cu timpi impliciți care se pot modifica) și ingredientele lui:
   - cantitate + unitate (g / ml / porție definită), convertite în grame
   - marcaj `fix` sau `flexibil (min-max g per porție)`, ca să știe solverul ce poate ajusta
+  - condimentele și uleiul nu se cântăresc: produsul e marcat „condiment” sau „ulei”, iar aplicația scrie „Condimentează: boia, sare” / „Puțin ulei” în loc de grame. Cantitatea din rețetă rămâne doar ca estimare pentru calorii (uleiul contează: ~45 kcal la 5 g).
 - **Creare rapidă:** lipești linii de tipul `300g piept pui`, `2 buc ou`, `1 lingura ulei`. Parserul le mapează fuzzy pe baza de date și cere confirmare doar unde nu e sigur.
 - **Set prestabilit** (produse ușor de găsit la Lidl, puțină diversitate, puțin timp în bucătărie): 5 prânzuri, 5 cine mari și sățioase, 4 gustări (una se gătește pe bloc, restul se asamblează rapid, inclusiv în sandwich maker), 5 rețete rapide. Rețetele vechi nu se păstrează.
 

@@ -50,3 +50,11 @@ export function aisleFromOffCategories(tags: string[]): AisleId {
   }
   return "altele";
 }
+
+/** Ce nu se cântărește dintre produsele de bază: uleiul și condimentele (nu praful de copt, oțetul, sosurile). */
+export function defaultToTaste(name: string, aisle: string, staple: boolean): "condiment" | "ulei" | null {
+  if (aisle !== "condimente" || !staple) return null;
+  if (/^ulei/i.test(name)) return "ulei";
+  if (/^(praf de copt|esen.. de vanilie|o.et|sos )/i.test(name)) return null;
+  return "condiment";
+}

@@ -7,6 +7,7 @@ import { MacroLine } from "@/components/macros";
 import { getRecipe, listKitchen, recipeBundle } from "@/server/recipes";
 import { recipeIngredientGrams, recipePerServing } from "@/domain/macros";
 import { RECIPE_CATEGORIES } from "@/domain/types";
+import { TASTE_LABEL } from "@/domain/taste";
 import { formatAmount, minutes } from "@/lib/format";
 import { ArchiveRecipeButton } from "./archive-button";
 import { IngredientBreakdown } from "./ingredient-breakdown";
@@ -113,7 +114,8 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
                   <ul className="mt-2 flex flex-wrap gap-1.5">
                     {s.lines.map((l) => (
                       <li key={l.id} className="rounded-md bg-muted px-2 py-0.5 text-xs">
-                        {ingredients[l.ingredientId]?.name ?? "?"} · {formatAmount(l.amount, l.unit, ingredients[l.ingredientId])}
+                        {ingredients[l.ingredientId]?.name ?? "?"} ·{" "}
+                        {ingredients[l.ingredientId]?.toTaste ? TASTE_LABEL[ingredients[l.ingredientId].toTaste!] : formatAmount(l.amount, l.unit, ingredients[l.ingredientId])}
                       </li>
                     ))}
                   </ul>

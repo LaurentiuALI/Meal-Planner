@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Droplets, Flame, Hourglass, Lightbulb, Minus, PartyPopper, Play, Plus,
-  Thermometer, Undo2, Utensils, X,
+  Sparkles, Thermometer, Undo2, Utensils, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import { grams, minutes as fmtDuration } from "@/lib/format";
 import { shortDate, weekdayName } from "@/domain/plan";
 import type { Scheduled, SessionPlan } from "@/domain/cooking";
 import { blockers, isRinging, remainingMs, suggestedStep, timerMinutes } from "@/domain/cook-guide";
+import { tasteNotes } from "@/domain/taste";
 import { jobLabel, type CookSession } from "./use-cook-session";
 import { AddTime, countdown, Nudge, shortRecipe, TimerTray } from "./timers";
 
@@ -30,6 +31,7 @@ export function unitName(k: string, equipmentNames: Record<string, string>) {
 export function linesSummary(s: Scheduled, recipeNames: Record<string, string>) {
   const by = new Map<string, { total: number; parts: Map<string, number> }>();
   for (const l of s.inputs) {
+    if (l.toTaste) continue; // condimentele și uleiul nu se cântăresc: apar în tasteNotes
     const cur = by.get(l.name) ?? { total: 0, parts: new Map() };
     cur.total += l.grams;
     cur.parts.set(l.recipeId, (cur.parts.get(l.recipeId) ?? 0) + l.grams);
@@ -117,6 +119,7 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
 
   const texts = job.task.texts.filter((t) => job.recipeIds.includes(t.recipeId));
   const lines = linesSummary(job, recipeNames);
+  const taste = tasteNotes(job.inputs);
   const passive = job.minutes - job.activeMinutes;
   const showTemp = job.task.tempC != null && job.units.some((u) => /^(cuptor|airfryer)/.test(u));
   const portion = job.task.kind === "portion" ? plan.portions.find((p) => p.recipeId === job.recipeIds[0]) : undefined;
@@ -239,6 +242,16 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
                     {l.name}
                     {l.split && <span className="block text-xs text-muted-foreground">{l.split}</span>}
                   </span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {taste.length > 0 && (
+            <ul className="space-y-1 rounded-xl border border-dashed px-4 py-3 text-lg">
+              {taste.map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <Sparkles className="size-4 shrink-0 text-muted-foreground" /> {t}
                 </li>
               ))}
             </ul>

@@ -12,6 +12,7 @@ import { OFF_PORTIONS, PRESET_RECIPES } from "../src/server/seed/recipes";
 import { DEFAULT_SETTINGS, type Portion, type RecipeStep } from "../src/domain/types";
 import { canonicalUnit } from "../src/domain/units";
 import { normalize } from "../src/domain/text";
+import { defaultToTaste } from "../src/domain/aisles";
 
 type GenericRow = { fdcId: number; name: string; aisle: string; staple: boolean; density: number; portions: Portion[]; kcal: number; protein: number; carbs: number; fat: number; fiber: number | null };
 type LegacyRow = { name: string; aisle: string; lidl: boolean; kcal: number; protein: number; carbs: number; fat: number; fiber: number | null; packGrams: number | null; portions?: Portion[] };
@@ -58,6 +59,7 @@ async function main() {
     ...generic.map((g) => ({
       id: `usda-${g.fdcId}`, name: g.name, brand: null, kcal: g.kcal, protein: g.protein, carbs: g.carbs, fat: g.fat, fiber: g.fiber,
       density: g.density, portions: g.portions, aisle: g.aisle, staple: g.staple, source: "usda" as const, inLibrary: true,
+      toTaste: defaultToTaste(g.name, g.aisle, g.staple),
     })),
     ...legacy.map((l) => ({
       id: `legacy-${slug(l.name)}`, name: l.name.trim(), brand: null, kcal: l.kcal, protein: l.protein, carbs: l.carbs, fat: l.fat, fiber: l.fiber,

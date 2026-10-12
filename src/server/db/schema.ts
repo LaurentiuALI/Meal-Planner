@@ -31,6 +31,8 @@ export const ingredients = sqliteTable(
     inLibrary: integer("in_library", { mode: "boolean" }).notNull().default(false),
     /** Valorile au fost verificate de tine (de pe etichetă sau ca generic bun). */
     verified: integer("verified", { mode: "boolean" }).notNull().default(false),
+    /** Nu se cântărește: condiment (după gust) sau ulei (puțin). */
+    toTaste: text("to_taste", { enum: ["condiment", "ulei"] }),
     /** Prețul (lei) pentru `priceGrams` grame; din fișierul Lidl sau introdus de tine. */
     priceRon: real("price_ron"),
     priceGrams: real("price_grams"),

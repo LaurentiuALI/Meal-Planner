@@ -50,6 +50,13 @@
       "when": 1791822254858,
       "tag": "0006_demonic_prima",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791824284073,
+      "tag": "0007_opposite_stick",
+      "breakpoints": true
     }
   ]
 }

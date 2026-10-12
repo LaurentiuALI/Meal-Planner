@@ -23,6 +23,12 @@ export type Portion = { name: string; grams: number };
 
 export type IngredientSource = "off" | "usda" | "manual" | "legacy";
 
+/**
+ * Ce nu cântărești: condimentele (după gust) și uleiul (puțin). În rețetă păstrăm o cantitate
+ * estimată, doar pentru calcul; în aplicație apare „condimentează” / „puțin ulei”, fără grame.
+ */
+export type ToTaste = "condiment" | "ulei";
+
 export type Ingredient = {
   id: string;
   name: string;
@@ -38,6 +44,7 @@ export type Ingredient = {
   lidl: boolean;
   source: IngredientSource;
   barcode: string | null;
+  toTaste?: ToTaste | null;
 };
 
 export type RecipeCategory = "pranz" | "gustare" | "cina" | "rapid";

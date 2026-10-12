@@ -9,6 +9,7 @@ import { grams, minutes as fmtDuration } from "@/lib/format";
 import { shortDate, weekdayName } from "@/domain/plan";
 import type { SessionPlan } from "@/domain/cooking";
 import { suggestedStep, timerMinutes } from "@/domain/cook-guide";
+import { tasteNotes } from "@/domain/taste";
 import { jobLabel, useCookSession } from "./use-cook-session";
 import { clock, CookMode, linesSummary, unitName } from "./cook-mode";
 import { AlarmOverlay, Nudge, TimerTray } from "./timers";
@@ -172,6 +173,9 @@ export function SessionView({
                           ))}
                         </ul>
                       )}
+                      {tasteNotes(s.inputs).map((t) => (
+                        <p key={t} className="mt-0.5 text-sm text-muted-foreground">{t}</p>
+                      ))}
                       {s.rinse && <p className="mt-1 text-xs text-muted-foreground">Clătește vasul înainte (l-ai folosit la altă rețetă).</p>}
                       {s.task.hint && <p className="mt-1 text-xs text-muted-foreground">💡 {s.task.hint}</p>}
                       {s.task.texts.some((t) => s.recipeIds.includes(t.recipeId)) && (

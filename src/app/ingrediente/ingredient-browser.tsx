@@ -49,8 +49,10 @@ export function IngredientBrowser() {
     [router],
   );
 
-  const unverifiedUsed = hits.filter((h) => (h.uses ?? 0) > 0 && !h.verified).length;
-  const shown = onlyUnverified ? hits.filter((h) => !h.verified) : hits;
+  // Condimentele și uleiul nu se cântăresc, deci nu le cerem verificate.
+  const doubtful = (h: Hit) => !h.verified && !h.toTaste;
+  const unverifiedUsed = hits.filter((h) => (h.uses ?? 0) > 0 && doubtful(h)).length;
+  const shown = onlyUnverified ? hits.filter(doubtful) : hits;
 
   return (
     <div className="space-y-3">
@@ -118,7 +120,7 @@ function HitList({ hits, markMine = false }: { hits: Hit[]; markMine?: boolean }
           <Link href={`/ingrediente/${h.id}`} className="flex items-start justify-between gap-3 px-3 py-2 hover:bg-muted/50">
             <span className="min-w-0">
               <span className="block truncate text-sm font-medium">
-                {h.inLibrary && !h.verified && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Valori neverificate" />}
+                {h.inLibrary && !h.verified && !h.toTaste && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Valori neverificate" />}
                 {h.name}
               </span>
               <span className="block text-xs text-muted-foreground tabular-nums">

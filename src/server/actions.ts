@@ -56,6 +56,7 @@ const ingredientSchema = z.object({
   barcode: z.string().nullable(),
   source: z.enum(["off", "usda", "manual", "legacy"]).optional(),
   verified: z.boolean().optional(),
+  toTaste: z.enum(["condiment", "ulei"]).nullable().optional(),
 });
 
 export async function saveIngredientAction(input: IngredientInput) {

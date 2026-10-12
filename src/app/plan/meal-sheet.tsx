@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { grams } from "@/lib/format";
 import { recipeLines } from "@/domain/macros";
 import { lineServingGrams, mealMacros, shortDate, SLOT_LABELS, weekdayName, type Meal } from "@/domain/plan";
+import { TASTE_LABEL } from "@/domain/taste";
 import type { Ingredient, Recipe } from "@/domain/types";
 import { removeMealAction, updateMealAction } from "@/server/plan-actions";
 
@@ -121,6 +122,7 @@ export function MealSheet({
               {recipeLines(recipe).map((l) => {
                 const g = lineServingGrams(recipe, l, lookup, preview);
                 const isPinned = pins[l.id] != null;
+                const taste = lookup(l.ingredientId)?.toTaste;
                 const isSolved = !isPinned && meal.solved[l.id] != null;
                 return (
                   <li key={l.id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
@@ -141,7 +143,7 @@ export function MealSheet({
                         <span className="w-3 text-xs">g</span>
                       </>
                     ) : (
-                      <span className="tabular-nums text-muted-foreground">{grams(g)}</span>
+                      <span className="tabular-nums text-muted-foreground">{taste ? TASTE_LABEL[taste] : grams(g)}</span>
                     )}
                   </li>
                 );
