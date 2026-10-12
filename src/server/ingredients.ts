@@ -13,6 +13,7 @@ export type IngredientHit = Candidate & {
   per100: Ingredient["per100"];
   lidl: boolean;
   packLabel: string | null;
+  source: Ingredient["source"];
 };
 
 /**
@@ -39,6 +40,7 @@ async function loadIndex(): Promise<IngredientHit[]> {
     uses: usage!.get(r.id) ?? 0,
     lidl: r.lidl,
     packLabel: r.packLabel,
+    source: r.source,
     per100: { kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, fiber: r.fiber },
   }));
   return index;
@@ -124,14 +126,14 @@ export async function addToLibrary(ids: string[]) {
   invalidateIngredientIndex();
 }
 
-export async function ingredientUsage(id: string): Promise<string[]> {
-  const rows = await db.select({ name: t.recipes.name, steps: t.recipes.steps }).from(t.recipes).where(eq(t.recipes.archived, false));
-  return rows.filter((r) => r.steps.some((s) => s.lines.some((l) => l.ingredientId === id))).map((r) => r.name);
+export async function ingredientUsage(id: string): Promise<{ id: string; name: string }[]> {
+  const rows = await db.select({ id: t.recipes.id, name: t.recipes.name, steps: t.recipes.steps }).from(t.recipes).where(eq(t.recipes.archived, false));
+  return rows.filter((r) => r.steps.some((s) => s.lines.some((l) => l.ingredientId === id))).map(({ id, name }) => ({ id, name }));
 }
 
 export async function deleteIngredient(id: string) {
   const used = await ingredientUsage(id);
-  if (used.length) throw new Error(`E folosit în: ${used.join(", ")}`);
+  if (used.length) throw new Error(`E folosit în: ${used.map((r) => r.name).join(", ")}`);
   await db.delete(t.ingredients).where(eq(t.ingredients.id, id));
   invalidateIngredientIndex();
 }

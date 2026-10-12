@@ -7,8 +7,9 @@ import { MacroLine } from "@/components/macros";
 import { getRecipe, listKitchen, recipeBundle } from "@/server/recipes";
 import { recipeIngredientGrams, recipePerServing } from "@/domain/macros";
 import { RECIPE_CATEGORIES } from "@/domain/types";
-import { formatAmount, grams, minutes } from "@/lib/format";
+import { formatAmount, minutes } from "@/lib/format";
 import { ArchiveRecipeButton } from "./archive-button";
+import { IngredientBreakdown } from "./ingredient-breakdown";
 import { pricesFor } from "@/server/prices";
 import { lei } from "@/domain/prices";
 
@@ -73,27 +74,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
         </div>
       </header>
 
-      <section>
-        <h2 className="mb-2 font-semibold">Ingrediente</h2>
-        <ul className="divide-y rounded-lg border">
-          {totals.map(([iid, g]) => {
-            const ing = ingredients[iid];
-            const flexible = recipe.steps.some((s) => s.lines.some((l) => l.ingredientId === iid && l.flex));
-            return (
-              <li key={iid} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                <Link href={`/ingrediente/${iid}`} className="hover:underline">
-                  {ing?.name ?? "Ingredient lipsă"}
-                  {ing?.brand && <span className="text-muted-foreground"> · {ing.brand}</span>}
-                </Link>
-                <span className="shrink-0 tabular-nums">
-                  {flexible && <span className="mr-1 text-xs text-primary" title="Solverul ajustează cantitatea">↕</span>}
-                  {grams(g)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+      <IngredientBreakdown recipe={recipe} totals={totals} ingredients={ingredients} />
 
       <section>
         <h2 className="mb-2 font-semibold">Pași</h2>

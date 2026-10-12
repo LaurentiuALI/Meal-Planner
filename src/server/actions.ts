@@ -25,8 +25,8 @@ import type { Ingredient, Recipe, Settings } from "@/domain/types";
 
 // ─── Ingrediente ───
 
-export async function searchAction(query: string, libraryOnly = false) {
-  const hits = await searchIngredients(query, { limit: 15, libraryOnly });
+export async function searchAction(query: string, libraryOnly = false, limit = 15) {
+  const hits = await searchIngredients(query, { limit, libraryOnly });
   return hits.map((h) => h.candidate);
 }
 

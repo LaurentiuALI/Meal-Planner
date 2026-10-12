@@ -37,7 +37,7 @@ function NumField({ label, value, onChange, suffix, placeholder }: { label: stri
   );
 }
 
-export function IngredientForm({ initial, fromDraft = false }: { initial: IngredientInput; fromDraft?: boolean }) {
+export function IngredientForm({ initial, fromDraft = false, returnTo }: { initial: IngredientInput; fromDraft?: boolean; returnTo?: string }) {
   const router = useRouter();
   const [v, setV] = useState(initial);
   const [key, setKey] = useState(0);
@@ -65,7 +65,8 @@ export function IngredientForm({ initial, fromDraft = false }: { initial: Ingred
       const res = await saveIngredientAction({ ...v, per100: { ...v.per100, kcal: v.per100.kcal || computedKcal } });
       if (!res.ok) return void toast.error(res.error);
       toast.success("Salvat");
-      router.push(`/ingrediente/${res.id}`);
+      // Venit dintr-o rețetă: te întorci la ea, cu macro-urile recalculate.
+      router.push(returnTo ?? `/ingrediente/${res.id}`);
       router.refresh();
     });
   }

@@ -24,7 +24,7 @@ export function IngredientBrowser() {
   useEffect(() => {
     const n = ++seq.current;
     const timer = setTimeout(() => start(async () => {
-      const res = await searchAction(query);
+      const res = await searchAction(query, false, query.trim() ? 30 : 1000);
       if (n === seq.current) setHits(res);
     }), 150);
     return () => clearTimeout(timer);
@@ -65,26 +65,15 @@ export function IngredientBrowser() {
           </Link>
         </Button>
       </div>
-      {!query && <p className="text-xs text-muted-foreground">Produsele tale, cele mai folosite întâi. Caută ca să vezi și catalogul (~6000 de produse).</p>}
-      <ul className="divide-y rounded-lg border">
-        {hits.map((h) => (
-          <li key={h.id}>
-            <Link href={`/ingrediente/${h.id}`} className="flex items-start justify-between gap-3 px-3 py-2 hover:bg-muted/50">
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{h.name}</span>
-                <span className="block text-xs text-muted-foreground tabular-nums">
-                  {h.brand && `${h.brand} · `}
-                  {Math.round(h.per100.kcal)} kcal · P {h.per100.protein} · C {h.per100.carbs} · G {h.per100.fat} · F {h.per100.fiber ?? "?"}
-                </span>
-              </span>
-              <span className="flex shrink-0 gap-1">
-                {h.lidl && <Badge variant="outline">Lidl</Badge>}
-                {h.inLibrary && <Badge variant="secondary">al tău</Badge>}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {!query && <p className="text-xs text-muted-foreground">Toate produsele tale ({hits.length}). Caută ca să vezi și catalogul (~6000 de produse).</p>}
+      {query.trim() ? (
+        <HitList hits={hits} markMine />
+      ) : (
+        <>
+          <Section title="În rețetele tale" hits={hits.filter((h) => (h.uses ?? 0) > 0)} />
+          <Section title="Restul produselor tale" hits={hits.filter((h) => !h.uses)} />
+        </>
+      )}
       {query && !pending && hits.length === 0 && (
         <p className="py-6 text-center text-sm text-muted-foreground">
           Nimic pentru „{query}”. <Link href="/ingrediente/nou" className="underline">Adaugă-l de pe etichetă</Link> sau scanează-l.
@@ -92,5 +81,45 @@ export function IngredientBrowser() {
       )}
       <BarcodeScanner open={scanning} onOpenChange={setScanning} onCode={onCode} />
     </div>
+  );
+}
+
+const SOURCE: Record<Hit["source"], string | null> = { usda: "generic", off: null, manual: null, legacy: null };
+
+function Section({ title, hits }: { title: string; hits: Hit[] }) {
+  if (!hits.length) return null;
+  return (
+    <section className="space-y-1.5">
+      <h2 className="text-sm font-semibold">
+        {title} <span className="font-normal text-muted-foreground">· {hits.length}</span>
+      </h2>
+      <HitList hits={[...hits].sort((a, b) => a.name.localeCompare(b.name, "ro"))} />
+    </section>
+  );
+}
+
+function HitList({ hits, markMine = false }: { hits: Hit[]; markMine?: boolean }) {
+  if (!hits.length) return null;
+  return (
+    <ul className="divide-y rounded-lg border">
+      {hits.map((h) => (
+        <li key={h.id}>
+          <Link href={`/ingrediente/${h.id}`} className="flex items-start justify-between gap-3 px-3 py-2 hover:bg-muted/50">
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-medium">{h.name}</span>
+              <span className="block text-xs text-muted-foreground tabular-nums">
+                {h.brand && `${h.brand} · `}
+                {Math.round(h.per100.kcal)} kcal · P {h.per100.protein} · C {h.per100.carbs} · G {h.per100.fat} · F {h.per100.fiber ?? "?"}
+              </span>
+            </span>
+            <span className="flex shrink-0 gap-1">
+              {SOURCE[h.source] && <Badge variant="outline">{SOURCE[h.source]}</Badge>}
+              {h.lidl && <Badge variant="outline">Lidl</Badge>}
+              {markMine && h.inLibrary && <Badge variant="secondary">al tău</Badge>}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }
