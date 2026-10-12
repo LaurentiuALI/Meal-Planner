@@ -1,110 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Bell, Check, Clock, Flame, Pause, Play, RotateCcw, Snowflake, Sparkles, Thermometer, Timer, Utensils } from "lucide-react";
-import { toast } from "sonner";
+import { AlertTriangle, Check, Clock, Flame, Play, RotateCcw, Snowflake, Sparkles, Thermometer, Timer, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { grams, minutes as fmtDuration } from "@/lib/format";
 import { shortDate, weekdayName } from "@/domain/plan";
-import type { Scheduled, SessionPlan } from "@/domain/cooking";
+import type { SessionPlan } from "@/domain/cooking";
+import { suggestedStep, timerMinutes } from "@/domain/cook-guide";
+import { jobLabel, useCookSession } from "./use-cook-session";
+import { clock, CookMode, linesSummary, unitName } from "./cook-mode";
+import { AlarmOverlay, Nudge, TimerTray } from "./timers";
 
-const clock = (min: number) => {
-  const m = Math.max(0, Math.round(min));
-  return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
-};
-
-type State = { startedAt: number | null; done: string[]; timers: Record<string, number> };
-const EMPTY: State = { startedAt: null, done: [], timers: {} };
-
-/** Starea sesiunii (pornită, pași bifați, timere) supraviețuiește unui refresh sau unui ecran blocat. */
-function useSessionState(key: string) {
-  const storageKey = `session:${key}`;
-  const [state, setState] = useState<State>(EMPTY);
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage există doar după hidratare
-      setState({ ...EMPTY, ...JSON.parse(localStorage.getItem(storageKey) ?? "{}") });
-    } catch {
-      setState(EMPTY);
-    }
-  }, [storageKey]);
-  const update = useCallback(
-    (fn: (s: State) => State) =>
-      setState((s) => {
-        const next = fn(s);
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {}
-        return next;
-      }),
-    [storageKey],
-  );
-  return [state, update] as const;
-}
-
-/** Ține ecranul aprins cât gătești (iOS 16.4+, Android). */
-function useWakeLock(active: boolean) {
-  useEffect(() => {
-    if (!active || !("wakeLock" in navigator)) return;
-    let lock: WakeLockSentinel | null = null;
-    const acquire = () => navigator.wakeLock.request("screen").then((l) => (lock = l)).catch(() => {});
-    acquire();
-    const onVisible = () => document.visibilityState === "visible" && acquire();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      lock?.release().catch(() => {});
-    };
-  }, [active]);
-}
-
-function beep() {
-  try {
-    const ctx = new AudioContext();
-    [0, 0.35, 0.7].forEach((t) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.frequency.value = 880;
-      g.gain.setValueAtTime(0.3, ctx.currentTime + t);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
-      o.connect(g).connect(ctx.destination);
-      o.start(ctx.currentTime + t);
-      o.stop(ctx.currentTime + t + 0.3);
-    });
-  } catch {}
-  navigator.vibrate?.([300, 150, 300]);
-}
-
-async function notify(title: string) {
-  try {
-    if (Notification.permission !== "granted") return;
-    const reg = await navigator.serviceWorker?.getRegistration();
-    if (reg) await reg.showNotification(title, { body: "Timerul s-a terminat", tag: title });
-    else new Notification(title);
-  } catch {}
-}
-
-/** Ingredientele unui pas, adunate pe nume, cu împărțirea pe rețete când sunt mai multe. */
-function linesSummary(s: Scheduled, recipeNames: Record<string, string>) {
-  const by = new Map<string, { total: number; parts: Map<string, number> }>();
-  for (const l of s.inputs) {
-    const cur = by.get(l.name) ?? { total: 0, parts: new Map() };
-    const g = l.grams;
-    cur.total += g;
-    cur.parts.set(l.recipeId, (cur.parts.get(l.recipeId) ?? 0) + g);
-    by.set(l.name, cur);
-  }
-  return [...by]
-    .sort((a, b) => b[1].total - a[1].total)
-    .map(([name, { total, parts }]) => ({
-      name,
-      total,
-      split: parts.size > 1 ? [...parts].map(([rid, g]) => `${(recipeNames[rid] ?? "?").split(" ").slice(0, 2).join(" ")} ${grams(g)}`).join(" + ") : null,
-    }));
-}
+const at = (min: number) => clock(min * 60_000);
 
 export function SessionView({
   sessionKey,
@@ -117,58 +26,12 @@ export function SessionView({
   recipeNames: Record<string, string>;
   equipmentNames: Record<string, string>;
 }) {
-  const [state, update] = useSessionState(sessionKey);
-  const [now, setNow] = useState(() => Date.now());
-  const fired = useRef(new Set<string>());
+  const session = useCookSession(sessionKey, plan.timeline);
+  const { state } = session;
   const running = state.startedAt != null;
-  useWakeLock(running);
-
-  useEffect(() => {
-    if (!running && !Object.keys(state.timers).length) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [running, state.timers]);
-
-  // Timerele terminate: sunet, vibrație, notificare (o singură dată pe timer).
-  useEffect(() => {
-    for (const [jobId, endsAt] of Object.entries(state.timers)) {
-      if (endsAt <= now && !fired.current.has(jobId)) {
-        fired.current.add(jobId);
-        const job = plan.timeline.find((j) => j.id === jobId);
-        const title = job ? `${job.task.title}${job.batches > 1 ? ` (tura ${job.batch})` : ""}` : "Timer";
-        beep();
-        notify(title);
-        toast.warning(`Gata: ${title}`, { duration: 10_000 });
-      }
-    }
-  }, [now, state.timers, plan.timeline]);
-
-  const elapsed = running ? (now - state.startedAt!) / 60_000 : 0;
-  const unitName = (k: string) => {
-    const [id, n] = k.split("#");
-    return id === "aragaz" ? `ochiul ${n}` : (equipmentNames[id] ?? id).replace(/ \(.*\)$/, "") + (id === "vas-ceramic" ? ` ${n}` : "");
-  };
-
-  const start = async () => {
-    update((s) => ({ ...s, startedAt: Date.now() }));
-    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
-  };
-  const toggleDone = (id: string) =>
-    update((s) => ({ ...s, done: s.done.includes(id) ? s.done.filter((x) => x !== id) : [...s.done, id] }));
-  const startTimer = (s: Scheduled) => {
-    const mins = s.end - s.start;
-    update((st) => ({ ...st, timers: { ...st.timers, [s.id]: Date.now() + mins * 60_000 } }));
-    fired.current.delete(s.id);
-  };
-  const stopTimer = (id: string) =>
-    update((st) => {
-      const timers = { ...st.timers };
-      delete timers[id];
-      return { ...st, timers };
-    });
-
-  const next = useMemo(() => plan.timeline.find((s) => !state.done.includes(s.id)), [plan.timeline, state.done]);
+  const next = suggestedStep(plan.timeline, state);
   const doneCount = state.done.filter((id) => plan.timeline.some((s) => s.id === id)).length;
+  const unit = (k: string) => unitName(k, equipmentNames);
 
   return (
     <div className="mt-4 space-y-4">
@@ -210,37 +73,34 @@ export function SessionView({
         </ul>
       )}
 
-      <div className="flex items-center gap-2">
-        {!running ? (
-          <Button size="lg" className="flex-1" onClick={start}>
-            <Play /> Începe sesiunea
-          </Button>
-        ) : (
-          <>
-            <div className="flex-1 rounded-lg bg-primary/10 px-3 py-2 text-sm">
-              <div className="text-xs text-muted-foreground">
-                {clock(elapsed)} de la început · {doneCount}/{plan.timeline.length} pași
-              </div>
-              {next ? (
-                <div className="font-medium">
-                  {next.start <= elapsed + 0.5 ? "Acum" : `La ${clock(next.start)}`}: {next.task.title}
-                  {next.batches > 1 && ` (tura ${next.batch}/${next.batches})`}
-                </div>
-              ) : (
-                <div className="font-medium">Gata! Spor la caserole.</div>
-              )}
+      {!running ? (
+        <Button size="lg" className="h-14 w-full text-lg" onClick={session.open}>
+          <Play className="size-5" /> Gătește pas cu pas
+        </Button>
+      ) : (
+        <div className="flex items-center gap-2">
+          <button className="flex-1 rounded-lg bg-primary/10 px-3 py-2 text-left text-sm" onClick={session.open}>
+            <div className="text-xs text-muted-foreground">
+              {clock(session.now - state.startedAt!)} de la început · {doneCount}/{plan.timeline.length} pași
             </div>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Resetează sesiunea"
-              onClick={() => confirm("Resetezi sesiunea (bifele și timerele)?") && update(() => EMPTY)}
-            >
-              <RotateCcw />
-            </Button>
-          </>
-        )}
-      </div>
+            <div className="font-medium">{next ? `Acum: ${jobLabel(next)}` : "Gata! Spor la caserole."}</div>
+          </button>
+          <Button size="lg" className="h-12" onClick={session.open}>
+            <Play /> Continuă
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label="Resetează sesiunea"
+            onClick={() => confirm("Resetezi sesiunea (bifele și cronometrele)?") && session.reset()}
+          >
+            <RotateCcw />
+          </Button>
+        </div>
+      )}
+
+      <TimerTray session={session} timeline={plan.timeline} recipeNames={recipeNames} onShow={(id) => session.show(id)} />
+      <Nudge session={session} />
 
       <Tabs defaultValue="pasi">
         <TabsList className="w-full">
@@ -254,9 +114,7 @@ export function SessionView({
             {plan.timeline.map((s) => {
               const done = state.done.includes(s.id);
               const passive = s.end - s.activeEnd;
-              const timerEnds = state.timers[s.id];
-              const left = timerEnds ? Math.max(0, (timerEnds - now) / 1000) : null;
-              const isNow = running && !done && s.start <= elapsed + 0.5;
+              const isNow = running && s.id === next?.id;
               return (
                 <li
                   key={s.id}
@@ -264,7 +122,7 @@ export function SessionView({
                 >
                   <div className="flex items-start gap-3">
                     <button
-                      onClick={() => toggleDone(s.id)}
+                      onClick={() => session.toggleDone(s.id)}
                       aria-label={done ? "Marchează ca nefăcut" : "Marchează ca făcut"}
                       className={cn(
                         "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border-2",
@@ -274,11 +132,11 @@ export function SessionView({
                       {done && <Check className="size-4" strokeWidth={3} />}
                     </button>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="font-mono text-xs text-muted-foreground tabular-nums">{clock(s.start)}</span>
+                      <button className="flex flex-wrap items-baseline gap-x-2 text-left" onClick={() => session.show(s.id)}>
+                        <span className="font-mono text-xs text-muted-foreground tabular-nums">{at(s.start)}</span>
                         <span className={cn("font-semibold", done && "line-through")}>{s.task.title}</span>
                         {s.batches > 1 && <Badge variant="secondary">tura {s.batch}/{s.batches}</Badge>}
-                      </div>
+                      </button>
                       <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Clock className="size-3.5" /> {fmtDuration(s.end - s.start)}
@@ -288,6 +146,11 @@ export function SessionView({
                             <Flame className="size-3.5" /> {fmtDuration(passive)} singur
                           </span>
                         )}
+                        {timerMinutes(s) != null && (
+                          <span className="flex items-center gap-1">
+                            <Timer className="size-3.5" /> cronometru
+                          </span>
+                        )}
                         {s.task.tempC != null && s.units.some((u) => /^(cuptor|airfryer)/.test(u)) && (
                           <span className="flex items-center gap-1">
                             <Thermometer className="size-3.5" /> {s.task.tempC}°C
@@ -295,11 +158,10 @@ export function SessionView({
                         )}
                         {s.units.length > 0 && (
                           <span className="flex items-center gap-1">
-                            <Utensils className="size-3.5" /> {s.units.map(unitName).join(", ")}
+                            <Utensils className="size-3.5" /> {s.units.map(unit).join(", ")}
                           </span>
                         )}
                       </div>
-
                       {s.inputs.length > 0 && (
                         <ul className="mt-2 space-y-0.5">
                           {linesSummary(s, recipeNames).map((l) => (
@@ -332,30 +194,6 @@ export function SessionView({
                         </div>
                       )}
 
-                      {running && passive >= 3 && !done && (
-                        <div className="mt-2">
-                          {left == null ? (
-                            <Button size="sm" variant="outline" onClick={() => startTimer(s)}>
-                              <Timer /> Pornește timerul ({fmtDuration(s.end - s.start)})
-                            </Button>
-                          ) : (
-                            <div className="flex items-center gap-2">
-                              <span className={cn("font-mono text-2xl font-semibold tabular-nums", left === 0 && "animate-pulse text-destructive")}>
-                                {left === 0 ? (
-                                  <span className="flex items-center gap-1">
-                                    <Bell className="size-5" /> Gata!
-                                  </span>
-                                ) : (
-                                  `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`
-                                )}
-                              </span>
-                              <Button size="sm" variant="ghost" onClick={() => stopTimer(s.id)}>
-                                <Pause /> Oprește
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </li>
@@ -371,7 +209,7 @@ export function SessionView({
               <ul className="space-y-1.5 text-sm">
                 {g.jobs.map((s) => (
                   <li key={s.id} className="flex gap-3">
-                    <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{clock(s.start)}</span>
+                    <span className="w-10 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{at(s.start)}</span>
                     <span>
                       <b className="tabular-nums">{s.loadG >= 1 ? grams(s.loadG) : ""}</b> {s.task.title.replace(/^[^·]+· /, "")}
                       {s.batches > 1 && ` · tura ${s.batch}/${s.batches}`}
@@ -418,9 +256,13 @@ export function SessionView({
           )}
         </TabsContent>
       </Tabs>
+
+      {state.open && <CookMode session={session} plan={plan} recipeNames={recipeNames} equipmentNames={equipmentNames} />}
+      <AlarmOverlay session={session} timeline={plan.timeline} recipeNames={recipeNames} />
     </div>
   );
 }
+
 
 function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
   return (

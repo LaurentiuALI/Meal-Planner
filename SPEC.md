@@ -100,10 +100,12 @@ Rescriere de la zero, stabilită pe 2026-10-11. Documentul ăsta e sursa de adev
 - **Timeline cu paralelizare:**
   - Resurse: 1 om (doar timpul activ), 4 ochiuri, cuptorul, airfryerul, vasele.
   - Minimizează întâi timpul total, apoi vasele de spălat: reutilizează un vas dacă diferența e sub 5 minute.
-- **Mod pas-cu-pas:**
-  - Butoane mari, gramajele agregate scrise mare.
-  - Timere în prim-plan, cu ecranul ținut aprins (Wake Lock). Pe iOS nu ne bazăm pe timere în fundal.
-  - La final: „împarte în N caserole”.
+- **Mod pas-cu-pas (pe tot ecranul, „te ține de mână”):**
+  - Pornește cu „Gătește pas cu pas”. Un singur pas pe ecran: instrucțiunea rețetei scrisă mare, ustensila și temperatura, gramajele agregate, sfatul acțiunii. Butoane mari: înapoi, „Gata, mai departe”, înainte.
+  - Ghidul urmează planul, dar se adaptează ritmului real: te duce la primul pas nefăcut care se poate face acum. Un pas care depinde de altul încă în lucru (cuptorul care se încălzește, orezul care fierbe) arată ce aștepți, cu minutele rămase, și ce poți face între timp.
+  - **Cronometre:** pașii care gătesc singuri au cronometru, cu durata ajustabilă înainte de pornire. După pornire trece în bara de sus și poți merge mai departe. Când se termină: alarmă care se repetă și ecran de alertă, cu „+1 / +3 / +5 min” sau „Gata”. Minute în plus se pot adăuga oricând. La acțiunile cu „la jumătate” în sfat (scutură coșul, întoarce), sună un memento la jumătate.
+  - Ecranul ținut aprins (Wake Lock); starea supraviețuiește unui refresh. Pe iOS sunetul cere aplicația deschisă (fără timere în fundalul telefonului); alarma cere sesiune audio „playback”, ca să sune și pe silențios.
+  - La final: „împarte în N caserole” (cu zilele), apoi ce e în frigider și ce e de spălat.
 
 ## 9. Etape
 
