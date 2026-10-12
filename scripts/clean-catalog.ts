@@ -37,9 +37,11 @@ async function main() {
   const ids = removable.map((i) => i.id);
   for (let i = 0; i < ids.length; i += 500) await db.delete(t.ingredients).where(inArray(t.ingredients.id, ids.slice(i, i + 500)));
   // Și din snapshot, ca o instalare nouă să nu le aducă înapoi.
-  const snapshot = JSON.parse(readFileSync("data/off-ro.json", "utf8")) as { products: { name: string }[] };
+  // Rețetele prestabilite se leagă de unele produse OFF după cod: acelea rămân orice nume ar avea.
+  const preset = new Set([...readFileSync("src/server/seed/recipes.ts", "utf8").matchAll(/off:(\d+)/g)].map((m) => m[1]));
+  const snapshot = JSON.parse(readFileSync("data/off-ro.json", "utf8")) as { products: { code: string; name: string }[] };
   const before = snapshot.products.length;
-  snapshot.products = snapshot.products.filter((o) => !isForeignName(o.name, lexicon));
+  snapshot.products = snapshot.products.filter((o) => preset.has(o.code) || !isForeignName(o.name, lexicon));
   writeFileSync("data/off-ro.json", JSON.stringify(snapshot));
   console.log(`Scoase ${ids.length} din baza de date și ${before - snapshot.products.length} din data/off-ro.json.`);
 }

@@ -308,7 +308,7 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
                         ? "Pornește-l când începi. Stai lângă și amestecă."
                         : "Pornește-l când ai pus la gătit."}
                   </p>
-                  <button className="mt-2 text-sm text-muted-foreground underline underline-offset-4" onClick={() => session.complete(job.id)}>
+                  <button className="mt-1 px-2 py-2.5 text-sm text-muted-foreground underline underline-offset-4" onClick={() => session.complete(job.id)}>
                     Fără cronometru, mai departe
                   </button>
                 </>

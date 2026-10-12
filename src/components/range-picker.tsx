@@ -44,7 +44,7 @@ export function RangePicker({ basePath, from, to }: { basePath: string; from: st
             <Link
               key={p.label}
               href={href(f, t)}
-              className={cn("rounded-full border px-3 py-1 text-xs", f === from && t === to ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
+              className={cn("rounded-full border px-3.5 py-2 text-xs", f === from && t === to ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted")}
             >
               {p.label}
             </Link>

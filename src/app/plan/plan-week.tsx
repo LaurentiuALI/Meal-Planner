@@ -215,7 +215,7 @@ export function PlanWeek({
                           onClick={() => setAdding({ date, slot })}
                           className={cn(
                             "flex w-full items-center gap-1 rounded-md border border-dashed px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted/50",
-                            items.length > 0 && "border-transparent py-0.5",
+                            items.length > 0 && "border-transparent py-2",
                           )}
                         >
                           <Plus className="size-3.5" /> {items.length ? "încă una" : "adaugă"}
@@ -228,7 +228,7 @@ export function PlanWeek({
             </ul>
 
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <button onClick={() => setAdding({ date, slot: "extra" })} className="text-xs text-muted-foreground hover:text-foreground">
+              <button onClick={() => setAdding({ date, slot: "extra" })} className="-my-1 py-2.5 text-xs text-muted-foreground hover:text-foreground">
                 + extra (ceva mâncat în plus)
               </button>
             </div>

@@ -129,7 +129,7 @@ export function IngredientForm({ initial, fromDraft = false, returnTo }: { initi
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Raion</Label>
-          <select value={v.aisle} onChange={(e) => set({ aisle: e.target.value as IngredientInput["aisle"] })} className="h-9 w-full rounded-md border bg-transparent px-2 text-sm">
+          <select value={v.aisle} onChange={(e) => set({ aisle: e.target.value as IngredientInput["aisle"] })} className="h-9 w-full rounded-md border bg-transparent px-2 text-base md:text-sm">
             {AISLES.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.label}

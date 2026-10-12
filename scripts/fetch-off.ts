@@ -150,7 +150,8 @@ async function main() {
   // Fără nume în alte limbi: lexiconul vine din produsele generice și cele vechi (în română).
   const names = (file: string) => (JSON.parse(readFileSync(file, "utf8")) as { products: { name: string }[] }).products.map((p) => p.name);
   const lexicon = buildLexicon([...names("data/generic-ro.json"), ...names("data/legacy.json"), ...byCode.values().map((p) => p.name).filter((n) => /[ăâîșşțţ]/i.test(n))]);
-  const products = [...byCode.values()].filter((p) => !isForeignName(p.name, lexicon)).sort((a, b) => a.name.localeCompare(b.name, "ro"));
+  const preset = new Set([...readFileSync("src/server/seed/recipes.ts", "utf8").matchAll(/off:(\d+)/g)].map((m) => m[1]));
+  const products = [...byCode.values()].filter((p) => preset.has(p.code) || !isForeignName(p.name, lexicon)).sort((a, b) => a.name.localeCompare(b.name, "ro"));
   mkdirSync("data", { recursive: true });
   writeFileSync(
     "data/off-ro.json",

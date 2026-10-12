@@ -107,7 +107,7 @@ export function RecipeEditor({
               id="category"
               value={recipe.category}
               onChange={(e) => patch({ category: e.target.value as Recipe["category"] })}
-              className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+              className="h-9 w-full rounded-md border bg-transparent px-2 text-base md:text-sm"
             >
               {RECIPE_CATEGORIES.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -148,7 +148,7 @@ export function RecipeEditor({
                 aria-label="Acțiune"
                 value={step.actionId ?? ""}
                 onChange={(e) => patchStep(step.id, { actionId: e.target.value || null })}
-                className="h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-sm"
+                className="h-9 min-w-0 flex-1 rounded-md border bg-transparent px-2 text-base md:text-sm"
               >
                 <option value="">— fără acțiune —</option>
                 {actions.map((a) => (
@@ -216,7 +216,7 @@ export function RecipeEditor({
         <Plus /> Pas nou
       </Button>
 
-      <div className="sticky bottom-20 flex gap-2 md:bottom-4">
+      <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] -mx-4 flex gap-2 bg-background/95 px-4 py-2 backdrop-blur md:bottom-4 md:mx-0 md:px-0">
         <Button className="flex-1" size="lg" onClick={save} disabled={saving}>
           {saving && <Loader2 className="animate-spin" />} Salvează rețeta
         </Button>
@@ -276,7 +276,7 @@ function LineRow({
           aria-label="Unitate"
           value={line.unit}
           onChange={(e) => onChange({ unit: e.target.value })}
-          className="h-8 min-w-0 flex-1 rounded-md border bg-background px-1 text-sm"
+          className="h-8 min-w-0 flex-1 rounded-md border bg-background px-1 text-base md:text-sm"
         >
           {[...new Set([line.unit, ...units])].map((u) => (
             <option key={u}>{u}</option>
@@ -390,7 +390,7 @@ function PasteDialog({
                       „{p.raw.trim()}” → {p.amount ?? "?"} {p.unit ?? ""}
                     </div>
                     <select
-                      className="mt-1 h-9 w-full rounded-md border bg-transparent px-2"
+                      className="mt-1 h-9 w-full rounded-md border bg-transparent px-2 text-base md:text-sm"
                       value={p.choice ?? ""}
                       onChange={(e) => {
                         if (e.target.value === "__search") return setPickFor(i);
