@@ -4,8 +4,9 @@
  *
  * Date © OpenFoodFacts contributors, licență ODbL (https://opendatacommons.org/licenses/odbl/1-0/).
  */
-import { writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { aisleFromOffCategories } from "../src/domain/aisles";
+import { buildLexicon, isForeignName } from "../src/domain/language";
 
 const UA = "MealPlanner/2.0 (self-hosted; github.com/LaurentiuALI/Meal-Planner)";
 const FIELDS =
@@ -146,7 +147,10 @@ async function main() {
       if (p && !byCode.has(p.code)) byCode.set(p.code, p);
     }
   }
-  const products = [...byCode.values()].sort((a, b) => a.name.localeCompare(b.name, "ro"));
+  // Fără nume în alte limbi: lexiconul vine din produsele generice și cele vechi (în română).
+  const names = (file: string) => (JSON.parse(readFileSync(file, "utf8")) as { products: { name: string }[] }).products.map((p) => p.name);
+  const lexicon = buildLexicon([...names("data/generic-ro.json"), ...names("data/legacy.json"), ...byCode.values().map((p) => p.name).filter((n) => /[ăâîșşțţ]/i.test(n))]);
+  const products = [...byCode.values()].filter((p) => !isForeignName(p.name, lexicon)).sort((a, b) => a.name.localeCompare(b.name, "ro"));
   mkdirSync("data", { recursive: true });
   writeFileSync(
     "data/off-ro.json",

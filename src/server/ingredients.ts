@@ -14,6 +14,7 @@ export type IngredientHit = Candidate & {
   lidl: boolean;
   packLabel: string | null;
   source: Ingredient["source"];
+  verified: boolean;
 };
 
 /**
@@ -41,6 +42,7 @@ async function loadIndex(): Promise<IngredientHit[]> {
     lidl: r.lidl,
     packLabel: r.packLabel,
     source: r.source,
+    verified: r.verified,
     per100: { kcal: r.kcal, protein: r.protein, carbs: r.carbs, fat: r.fat, fiber: r.fiber },
   }));
   return index;
@@ -72,6 +74,16 @@ export async function getIngredients(ids: string[]): Promise<Map<string, Ingredi
   return new Map(rows.map((r) => [r.id, rowToIngredient(r)]));
 }
 
+/** Dintre produsele date, cele ale căror valori nu le-ai verificat încă. */
+export async function unverifiedAmong(ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await db
+    .select({ id: t.ingredients.id, verified: t.ingredients.verified })
+    .from(t.ingredients)
+    .where(inArray(t.ingredients.id, [...new Set(ids)]));
+  return new Set(rows.filter((r) => !r.verified).map((r) => r.id));
+}
+
 export async function getIngredient(id: string) {
   const [row] = await db.select().from(t.ingredients).where(eq(t.ingredients.id, id));
   if (!row) return null;
@@ -79,7 +91,7 @@ export async function getIngredient(id: string) {
     row.priceRon != null && row.priceGrams != null
       ? { priceRon: row.priceRon, priceGrams: row.priceGrams, source: row.priceSource, ref: row.priceRef, at: row.priceAt?.toISOString() ?? null }
       : null;
-  return { ...rowToIngredient(row), inLibrary: row.inLibrary, price };
+  return { ...rowToIngredient(row), verified: row.verified, inLibrary: row.inLibrary, price };
 }
 
 export async function listLibrary() {
@@ -87,7 +99,7 @@ export async function listLibrary() {
   return rows.map(rowToIngredient).sort((a, b) => a.name.localeCompare(b.name, "ro"));
 }
 
-export type IngredientInput = Omit<Ingredient, "id" | "source"> & { id?: string; source?: Ingredient["source"] };
+export type IngredientInput = Omit<Ingredient, "id" | "source"> & { id?: string; source?: Ingredient["source"]; verified?: boolean };
 
 export async function saveIngredient(input: IngredientInput): Promise<string> {
   const id = input.id ?? `manual-${crypto.randomUUID()}`;
@@ -108,6 +120,7 @@ export async function saveIngredient(input: IngredientInput): Promise<string> {
     lidl: input.lidl,
     barcode: input.barcode?.trim() || null,
     inLibrary: true,
+    verified: input.verified ?? false,
     updatedAt: new Date(),
   };
   if (input.id) {

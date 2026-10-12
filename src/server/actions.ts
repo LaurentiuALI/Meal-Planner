@@ -55,6 +55,7 @@ const ingredientSchema = z.object({
   lidl: z.boolean(),
   barcode: z.string().nullable(),
   source: z.enum(["off", "usda", "manual", "legacy"]).optional(),
+  verified: z.boolean().optional(),
 });
 
 export async function saveIngredientAction(input: IngredientInput) {

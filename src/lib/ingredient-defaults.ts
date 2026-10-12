@@ -12,4 +12,6 @@ export const blankIngredient = (barcode: string | null = null): IngredientInput 
   staple: false,
   lidl: true,
   barcode,
+  // Un produs nou se completează de pe etichetă.
+  verified: true,
 });

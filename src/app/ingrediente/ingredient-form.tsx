@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { AISLES } from "@/domain/aisles";
 import { kcalFrom } from "@/domain/macros";
@@ -56,7 +57,9 @@ export function IngredientForm({ initial, fromDraft = false, returnTo }: { initi
   }, [fromDraft]);
 
   const set = (p: Partial<IngredientInput>) => setV((x) => ({ ...x, ...p }));
-  const setMacro = (k: keyof IngredientInput["per100"], n: number | null) => setV((x) => ({ ...x, per100: { ...x.per100, [k]: k === "fiber" ? n : (n ?? 0) } }));
+  // Cine rescrie valorile le are de obicei pe etichetă în față: le considerăm verificate.
+  const setMacro = (k: keyof IngredientInput["per100"], n: number | null) =>
+    setV((x) => ({ ...x, verified: true, per100: { ...x.per100, [k]: k === "fiber" ? n : (n ?? 0) } }));
   const computedKcal = Math.round(kcalFrom(v.per100));
   const kcalOff = v.per100.kcal > 0 && Math.abs(v.per100.kcal - computedKcal) > Math.max(25, v.per100.kcal * 0.15);
 
@@ -107,6 +110,15 @@ export function IngredientForm({ initial, fromDraft = false, returnTo }: { initi
           Fibrele goale înseamnă „necunoscut”, nu 0. Caloriile goale se calculează din macro-uri ({computedKcal} kcal).
           {kcalOff && <span className="text-amber-600"> Caloriile nu se potrivesc cu macro-urile; verifică eticheta.</span>}
         </p>
+        <label className={cn("flex items-start gap-3 rounded-lg border p-3 text-sm", !v.verified && "border-amber-500/50 bg-amber-500/10")}>
+          <Switch className="mt-0.5" checked={!!v.verified} onCheckedChange={(c) => set({ verified: c })} />
+          <span>
+            <span className="font-medium">Valori verificate</span>
+            <span className="block text-xs text-muted-foreground">
+              {v.verified ? "Le-ai confirmat (de pe etichetă sau ca generic bun)." : "Neverificate: vin dintr-o bază publică. Compară-le cu eticheta și bifează."}
+            </span>
+          </span>
+        </label>
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -22,11 +22,13 @@ export function IngredientBreakdown({
   recipe,
   totals,
   ingredients,
+  unverified,
 }: {
   recipe: Recipe;
   /** Gramele per ingredient pentru toată rețeta (`recipe.servings` porții). */
   totals: [string, number][];
   ingredients: Record<string, Ingredient>;
+  unverified: Set<string>;
 }) {
   const servings = Math.max(1, recipe.servings);
   const rows = totals
@@ -37,6 +39,9 @@ export function IngredientBreakdown({
     })
     .sort((a, b) => (b.m?.kcal ?? 0) - (a.m?.kcal ?? 0));
   const total = sum(rows.flatMap((r) => (r.m ? [r.m] : [])));
+  // Ce contează pentru total: ingredientele neverificate care aduc cel puțin 2% din calorii.
+  const doubtful = rows.filter((r) => unverified.has(r.id) && r.m && total.kcal > 0 && r.m.kcal / total.kcal >= 0.02);
+  const doubtfulShare = doubtful.reduce((a, r) => a + (r.m?.kcal ?? 0), 0) / Math.max(1, total.kcal);
   const flexible = new Set(recipe.steps.flatMap((s) => s.lines.filter((l) => l.flex).map((l) => l.ingredientId)));
 
   return (
@@ -45,6 +50,14 @@ export function IngredientBreakdown({
       <p className="mb-2 text-xs text-muted-foreground">
         Per porție, cele mai calorice întâi. Atinge un produs ca să-i verifici sau corectezi valorile de pe etichetă.
       </p>
+      {doubtful.length > 0 && (
+        <p className="mb-2 flex items-start gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+          <span>
+            {doubtful.length === 1 ? "Un ingredient are" : `${doubtful.length} ingrediente au`} valori neverificate ({Math.round(doubtfulShare * 100)}% din calorii). Începe cu ele.
+          </span>
+        </p>
+      )}
       <ul className="divide-y rounded-lg border">
         {rows.map(({ id, ing, grams: g, m }) => {
           if (!ing || !m) {
@@ -63,6 +76,7 @@ export function IngredientBreakdown({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 truncate text-sm font-medium">
+                      {unverified.has(id) && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Neverificat" />}
                       {ing.name}
                       {ing.brand && <span className="font-normal text-muted-foreground"> · {ing.brand}</span>}
                     </span>
@@ -87,6 +101,7 @@ export function IngredientBreakdown({
                   </div>
                   <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
                     la 100 g: {Math.round(p.kcal)} kcal · P {num(p.protein)} · C {num(p.carbs)} · G {num(p.fat)} · F {p.fiber == null ? "?" : num(p.fiber)} · {SOURCE[ing.source]}
+                    {unverified.has(id) ? <span className="text-amber-600"> · neverificat</span> : <span className="text-primary"> · verificat ✓</span>}
                   </div>
                   {kcalOff && (
                     <div className="mt-0.5 flex items-center gap-1 text-[11px] text-amber-600">

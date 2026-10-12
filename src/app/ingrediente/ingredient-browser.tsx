@@ -19,6 +19,7 @@ export function IngredientBrowser() {
   const [hits, setHits] = useState<Hit[]>([]);
   const [pending, start] = useTransition();
   const [scanning, setScanning] = useState(false);
+  const [onlyUnverified, setOnlyUnverified] = useState(false);
   const seq = useRef(0);
 
   useEffect(() => {
@@ -48,6 +49,9 @@ export function IngredientBrowser() {
     [router],
   );
 
+  const unverifiedUsed = hits.filter((h) => (h.uses ?? 0) > 0 && !h.verified).length;
+  const shown = onlyUnverified ? hits.filter((h) => !h.verified) : hits;
+
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
@@ -65,13 +69,20 @@ export function IngredientBrowser() {
           </Link>
         </Button>
       </div>
-      {!query && <p className="text-xs text-muted-foreground">Toate produsele tale ({hits.length}). Caută ca să vezi și catalogul (~6000 de produse).</p>}
       {query.trim() ? (
         <HitList hits={hits} markMine />
       ) : (
         <>
-          <Section title="În rețetele tale" hits={hits.filter((h) => (h.uses ?? 0) > 0)} />
-          <Section title="Restul produselor tale" hits={hits.filter((h) => !h.uses)} />
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">Toate produsele tale ({hits.length}). Caută ca să vezi și catalogul (~6000 de produse).</p>
+            {unverifiedUsed > 0 && (
+              <Button size="sm" variant={onlyUnverified ? "default" : "outline"} onClick={() => setOnlyUnverified((x) => !x)}>
+                <span className="size-2 rounded-full bg-amber-500" /> Neverificate din rețete · {unverifiedUsed}
+              </Button>
+            )}
+          </div>
+          <Section title="În rețetele tale" hits={shown.filter((h) => (h.uses ?? 0) > 0)} />
+          {!onlyUnverified && <Section title="Restul produselor tale" hits={shown.filter((h) => !h.uses)} />}
         </>
       )}
       {query && !pending && hits.length === 0 && (
@@ -106,7 +117,10 @@ function HitList({ hits, markMine = false }: { hits: Hit[]; markMine?: boolean }
         <li key={h.id}>
           <Link href={`/ingrediente/${h.id}`} className="flex items-start justify-between gap-3 px-3 py-2 hover:bg-muted/50">
             <span className="min-w-0">
-              <span className="block truncate text-sm font-medium">{h.name}</span>
+              <span className="block truncate text-sm font-medium">
+                {h.inLibrary && !h.verified && <span className="mr-1.5 inline-block size-2 rounded-full bg-amber-500 align-middle" title="Valori neverificate" />}
+                {h.name}
+              </span>
               <span className="block text-xs text-muted-foreground tabular-nums">
                 {h.brand && `${h.brand} · `}
                 {Math.round(h.per100.kcal)} kcal · P {h.per100.protein} · C {h.per100.carbs} · G {h.per100.fat} · F {h.per100.fiber ?? "?"}

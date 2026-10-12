@@ -11,6 +11,7 @@ import { formatAmount, minutes } from "@/lib/format";
 import { ArchiveRecipeButton } from "./archive-button";
 import { IngredientBreakdown } from "./ingredient-breakdown";
 import { pricesFor } from "@/server/prices";
+import { unverifiedAmong } from "@/server/ingredients";
 import { lei } from "@/domain/prices";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
   const actions = new Map(kitchen.actions.map((a) => [a.id, a]));
   const perServing = recipePerServing(recipe, lookup);
   const totals = [...recipeIngredientGrams(recipe, lookup, recipe.servings)].sort((a, b) => b[1] - a[1]);
-  const prices = await pricesFor(totals.map(([iid]) => iid));
+  const [prices, unverified] = await Promise.all([pricesFor(totals.map(([iid]) => iid)), unverifiedAmong(totals.map(([iid]) => iid))]);
   const priced = totals.filter(([iid]) => prices.has(iid));
   const costPerServing =
     priced.reduce((a, [iid, g]) => a + (g / prices.get(iid)!.priceGrams) * prices.get(iid)!.priceRon, 0) / Math.max(1, recipe.servings);
@@ -74,7 +75,7 @@ export default async function RecipePage({ params }: { params: Promise<{ id: str
         </div>
       </header>
 
-      <IngredientBreakdown recipe={recipe} totals={totals} ingredients={ingredients} />
+      <IngredientBreakdown recipe={recipe} totals={totals} ingredients={ingredients} unverified={unverified} />
 
       <section>
         <h2 className="mb-2 font-semibold">Pași</h2>

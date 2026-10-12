@@ -1,0 +1,1 @@
+ALTER TABLE `ingredients` ADD `verified` integer DEFAULT false NOT NULL;

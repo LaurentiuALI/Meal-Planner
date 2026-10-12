@@ -29,6 +29,8 @@ export const ingredients = sqliteTable(
     barcode: text("barcode").unique(),
     /** Ingredientele „tale” (create, importate sau folosite), față de catalogul brut. */
     inLibrary: integer("in_library", { mode: "boolean" }).notNull().default(false),
+    /** Valorile au fost verificate de tine (de pe etichetă sau ca generic bun). */
+    verified: integer("verified", { mode: "boolean" }).notNull().default(false),
     /** Prețul (lei) pentru `priceGrams` grame; din fișierul Lidl sau introdus de tine. */
     priceRon: real("price_ron"),
     priceGrams: real("price_grams"),
