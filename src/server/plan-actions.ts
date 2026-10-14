@@ -42,8 +42,9 @@ export async function copyDayAction(from: string, to: string[]) {
 }
 
 export async function proposeWeekAction(monday: string) {
-  await proposeWeek(date.parse(monday));
+  const changed = await proposeWeek(date.parse(monday));
   done();
+  return changed;
 }
 
 export async function clearWeekAction(monday: string) {

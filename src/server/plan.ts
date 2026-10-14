@@ -6,7 +6,7 @@ import { rowToRecipe } from "./mappers";
 import { getIngredients, addToLibrary } from "./ingredients";
 import { getSettings } from "./settings";
 import { listRecipes } from "./recipes";
-import { addDays, mondayOf, weekDates, type Meal, type MealSlot } from "@/domain/plan";
+import { addDays, mondayOf, proposeForSlot, weekDates, type Meal, type MealSlot } from "@/domain/plan";
 import { solve } from "@/domain/solver";
 import { buildShoppingList, suggestFromLeftovers } from "@/domain/shopping";
 import type { Ingredient, Recipe } from "@/domain/types";
@@ -148,10 +148,11 @@ const SLOTS: { slot: MealSlot; category: Recipe["category"] }[] = [
 ];
 
 /**
- * Propune luni–miercuri: câte o rețetă pe slot, aleasă dintre cele folosite cel mai demult,
- * diferită de săptămâna trecută. Nu atinge sloturile deja completate.
+ * Propune luni–miercuri: câte o rețetă pe slot (vezi `proposeForSlot`). Apăsat din nou, trece la
+ * următoarea combinație; sloturile modificate de tine rămân neatinse.
  */
-export async function proposeWeek(monday: string) {
+/** Întoarce câte sloturi a schimbat (0 = toate erau deja modificate de tine). */
+export async function proposeWeek(monday: string): Promise<number> {
   const [recipes, history, current] = await Promise.all([
     listRecipes(),
     mealsBetween(addDays(monday, -56), addDays(monday, -1)),
@@ -159,21 +160,30 @@ export async function proposeWeek(monday: string) {
   ]);
   const lastUsed = new Map<string, string>();
   for (const m of history) if (m.recipeId) lastUsed.set(m.recipeId, m.date);
-  const lastWeek = new Set(history.filter((m) => m.date >= addDays(monday, -7)).map((m) => m.recipeId));
+  const lastWeek = new Set(history.filter((m) => m.date >= addDays(monday, -7)).flatMap((m) => (m.recipeId ? [m.recipeId] : [])));
+  const dates = PREP_DAYS.map((d) => addDays(monday, d));
+  let changed = 0;
 
   for (const { slot, category } of SLOTS) {
-    const pool = recipes
-      .filter((r) => r.category === category)
-      .sort((a, b) => (lastUsed.get(a.id) ?? "").localeCompare(lastUsed.get(b.id) ?? "") || a.name.localeCompare(b.name, "ro"));
-    const pick = pool.find((r) => !lastWeek.has(r.id)) ?? pool[0];
-    if (!pick) continue;
-    for (const offset of PREP_DAYS) {
-      const date = addDays(monday, offset);
-      if (current.some((m) => m.date === date && m.slot === slot)) continue;
-      await db.insert(t.meals).values({ id: `m-${crypto.randomUUID()}`, date, slot, recipeId: pick.id });
+    const inSlot = current.filter((m) => m.slot === slot && dates.includes(m.date));
+    const p = proposeForSlot({
+      recipeIds: recipes.filter((r) => r.category === category).map((r) => r.id),
+      lastUsed,
+      lastWeek,
+      current: inSlot,
+      seed: monday,
+    });
+    if (!p) continue;
+    changed++;
+    if (p.replace.length) await db.delete(t.meals).where(inArray(t.meals.id, p.replace));
+    const kept = inSlot.filter((m) => !p.replace.includes(m.id));
+    for (const date of dates) {
+      if (kept.some((m) => m.date === date)) continue;
+      await db.insert(t.meals).values({ id: `m-${crypto.randomUUID()}`, date, slot, recipeId: p.pick });
     }
   }
   await resolveWeekOf(monday);
+  return changed;
 }
 
 /**

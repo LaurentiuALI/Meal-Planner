@@ -103,3 +103,46 @@ export function defaultBlock(todayDate: string): { from: string; to: string } {
   if (wd === 6 || wd <= 1) return { from: monday, to: addDays(monday, 2) };
   return { from: addDays(monday, 3), to: addDays(monday, 4) };
 }
+
+// ─── Rotația propusă ───
+
+/** Un număr stabil din text (FNV-1a), ca ordinea la egalitate să difere de la o săptămână la alta, nu alfabetic. */
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+export type SlotProposal = { pick: string; replace: string[] } | null;
+
+/**
+ * Ce rețetă propunem pentru un slot în zilele de gătit:
+ * - întâi cele folosite cel mai demult (nefolosite deloc primele), fără cele de săptămâna trecută;
+ * - dacă slotul are deja o propunere neatinsă (aceeași rețetă, planificată, fără gramaje fixate),
+ *   trecem la următoarea din listă: fiecare „Propune” dă altă combinație;
+ * - un slot modificat de tine (mâncat, sărit, gramaje fixate, rețete diferite) rămâne cum e.
+ */
+export function proposeForSlot(opts: {
+  recipeIds: string[];
+  lastUsed: Map<string, string>;
+  lastWeek: Set<string>;
+  /** Mesele slotului în zilele de gătit ale săptămânii. */
+  current: Pick<Meal, "id" | "recipeId" | "status" | "pinned">[];
+  seed: string;
+}): SlotProposal {
+  const { recipeIds, lastUsed, lastWeek, current, seed } = opts;
+  const pool = [...recipeIds].sort(
+    (a, b) => (lastUsed.get(a) ?? "").localeCompare(lastUsed.get(b) ?? "") || hash(`${seed}:${a}`) - hash(`${seed}:${b}`),
+  );
+  const fresh = pool.filter((id) => !lastWeek.has(id));
+  const candidates = fresh.length ? fresh : pool;
+  if (!candidates.length) return null;
+  if (!current.length) return { pick: candidates[0], replace: [] };
+
+  const ids = new Set(current.map((m) => m.recipeId));
+  const untouched = ids.size === 1 && current.every((m) => m.recipeId && m.status === "planned" && Object.keys(m.pinned).length === 0);
+  if (!untouched) return null;
+  const at = candidates.indexOf(current[0].recipeId!);
+  const pick = candidates[(at + 1) % candidates.length];
+  return pick === current[0].recipeId ? null : { pick, replace: current.map((m) => m.id) };
+}

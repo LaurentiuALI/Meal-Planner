@@ -54,10 +54,10 @@ export function PlanWeek({
     todayRef.current?.scrollIntoView({ block: "start", behavior: "instant" as ScrollBehavior });
   }, [monday]);
 
-  const run = (fn: () => Promise<unknown>, msg?: string) =>
+  const run = <T,>(fn: () => Promise<T>, msg?: string | ((r: T) => string)) =>
     start(async () => {
-      await fn();
-      if (msg) toast.success(msg);
+      const r = await fn();
+      if (msg) toast.success(typeof msg === "function" ? msg(r) : msg);
       router.refresh();
     });
 
@@ -91,7 +91,10 @@ export function PlanWeek({
         </div>
         <div className="flex items-center gap-1">
           {pending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          <Button size="sm" onClick={() => run(() => proposeWeekAction(monday), "Am propus luni–miercuri")} disabled={pending}>
+          <Button size="sm" onClick={() => run(
+                () => proposeWeekAction(monday),
+                (n) => (n ? "Propunere nouă pentru luni–miercuri. Apasă din nou pentru alta." : "Nimic de schimbat: mesele de luni–miercuri sunt deja mâncate sau modificate de tine."),
+              )} disabled={pending}>
             <Sparkles /> Propune
           </Button>
           <DropdownMenu>
