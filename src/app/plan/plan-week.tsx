@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Copy, Loader2, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Copy, Loader2, MoreHorizontal, Plus, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -13,7 +13,7 @@ import { addDays, mondayOf, dayMacros, mealMacros, shortDate, SLOT_LABELS, weekD
 import type { Settings } from "@/domain/types";
 import type { PlanBundle } from "@/server/plan";
 import { addMealAction, clearWeekAction, copyDayAction } from "@/server/plan-actions";
-import { MealSheet } from "./meal-sheet";
+import { MealPanel } from "./meal-panel";
 import { AddMealDialog } from "./add-meal-dialog";
 import { ProposeDialog } from "./propose-dialog";
 
@@ -63,7 +63,6 @@ export function PlanWeek({
       router.refresh();
     });
 
-  const meal = bundle.meals.find((m) => m.id === openMeal);
   const empty = bundle.meals.length === 0;
 
   return (
@@ -189,13 +188,16 @@ export function PlanWeek({
                       {items.map((m) => {
                         const mm = mealMacros(m, recipes, lookup);
                         const name = m.recipeId ? recipes(m.recipeId)?.name : lookup(m.ingredientId ?? "")?.name;
+                        const open = openMeal === m.id;
                         return (
+                          <div key={m.id} className="space-y-1">
                           <button
-                            key={m.id}
-                            onClick={() => setOpenMeal(m.id)}
+                            onClick={() => setOpenMeal(open ? null : m.id)}
+                            aria-expanded={open}
                             className={cn(
                               "flex w-full items-center justify-between gap-2 rounded-md bg-muted/60 px-2.5 py-2 text-left text-sm hover:bg-muted",
                               m.status === "skipped" && "opacity-50 line-through",
+                              open && "bg-muted",
                             )}
                           >
                             <span className="min-w-0">
@@ -206,10 +208,21 @@ export function PlanWeek({
                                 {m.ingredientId && <span className="ml-1 text-xs text-muted-foreground">{m.grams} g</span>}
                               </span>
                             </span>
-                            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                            <span className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
                               {Math.round(mm.kcal)} · <span className="text-protein">{Math.round(mm.protein)}P</span>
+                              <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
                             </span>
                           </button>
+                          {open && (
+                            <MealPanel
+                              meal={m}
+                              recipe={m.recipeId ? recipes(m.recipeId) : undefined}
+                              ingredients={bundle.ingredients}
+                              returnTo={`/plan?w=${monday}`}
+                              onClose={() => setOpenMeal(null)}
+                            />
+                          )}
+                          </div>
                         );
                       })}
                       {slot !== "extra" && (
@@ -257,14 +270,6 @@ export function PlanWeek({
         );
       })}
 
-      {meal && (
-        <MealSheet
-          meal={meal}
-          recipe={meal.recipeId ? recipes(meal.recipeId) : undefined}
-          ingredients={bundle.ingredients}
-          onClose={() => setOpenMeal(null)}
-        />
-      )}
       <ProposeDialog monday={monday} settings={settings} open={proposing} onClose={() => setProposing(false)} />
       <AddMealDialog key={adding ? `${adding.date}-${adding.slot}` : "closed"} target={adding} onClose={() => setAdding(null)} />
     </div>

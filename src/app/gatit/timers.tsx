@@ -4,9 +4,10 @@ import { useState } from "react";
 import { BellRing, Check, ChevronRight, Timer as TimerIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Scheduled } from "@/domain/cooking";
-import { doneMessage, isRinging, remainingMs } from "@/domain/cook-guide";
+import type { Scheduled, SessionPlan } from "@/domain/cooking";
+import { destinationOf, doneMessage, isRinging, remainingMs } from "@/domain/cook-guide";
 import { jobLabel, type CookSession } from "./use-cook-session";
+import { destinationText, recipeColors, RecipeChips, shortRecipe } from "./cook-text";
 
 export const countdown = (ms: number) => {
   const s = Math.ceil(ms / 1000);
@@ -16,7 +17,6 @@ export const countdown = (ms: number) => {
   return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
 };
 
-export const shortRecipe = (name?: string) => (name ?? "").split(" ").slice(0, 3).join(" ");
 
 /** Butoanele de minute în plus, comune cronometrului mare, tăvii și alarmei. */
 export function AddTime({ id, session, values = [1, 5], size = "sm" }: { id: string; session: CookSession; values?: number[]; size?: "sm" | "lg" }) {
@@ -42,6 +42,7 @@ export function TimerTray({
   session,
   timeline,
   recipeNames,
+  colors = {},
   exclude,
   onShow,
   className,
@@ -49,6 +50,7 @@ export function TimerTray({
   session: CookSession;
   timeline: Scheduled[];
   recipeNames: Record<string, string>;
+  colors?: Record<string, string>;
   exclude?: string;
   onShow?: (id: string) => void;
   className?: string;
@@ -72,7 +74,7 @@ export function TimerTray({
           <li key={id} className={cn("overflow-hidden rounded-lg border bg-card", ringing && "border-destructive")}>
             <button className="relative flex w-full items-center gap-2 px-3 py-2 text-left" onClick={() => setOpenId(expanded ? null : id)}>
               <span className="absolute inset-y-0 left-0 bg-primary/10 transition-[width] duration-500" style={{ width: `${pct}%` }} aria-hidden />
-              {ringing ? <BellRing className="relative size-4 shrink-0 animate-pulse text-destructive" /> : <TimerIcon className="relative size-4 shrink-0 text-muted-foreground" />}
+              {ringing ? <BellRing className="relative size-4 shrink-0 animate-pulse text-destructive" /> : <TimerIcon className="relative size-4 shrink-0 text-muted-foreground" style={{ color: job ? colors[job.recipeIds[0]] : undefined }} />}
               <span className="relative min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium">{job ? jobLabel(job) : "Cronometru"}</span>
                 {job && <span className="block truncate text-[11px] text-muted-foreground">{job.recipeIds.map((r) => shortRecipe(recipeNames[r])).join(" + ")}</span>}
@@ -121,7 +123,19 @@ export function Nudge({ session, className }: { session: CookSession; className?
 }
 
 /** Când sună un cronometru: pe tot ecranul, peste orice, până îl oprești sau mai adaugi minute. */
-export function AlarmOverlay({ session, timeline, recipeNames }: { session: CookSession; timeline: Scheduled[]; recipeNames: Record<string, string> }) {
+export function AlarmOverlay({
+  session,
+  plan,
+  recipeNames,
+  equipmentNames,
+}: {
+  session: CookSession;
+  plan: SessionPlan;
+  recipeNames: Record<string, string>;
+  equipmentNames: Record<string, string>;
+}) {
+  const timeline = plan.timeline;
+  const colors = recipeColors(plan);
   const ringing = Object.entries(session.state.timers)
     .filter(([, t]) => isRinging(t, session.now))
     .map(([id, t]) => ({ id, t, job: timeline.find((j) => j.id === id) }));
@@ -138,8 +152,9 @@ export function AlarmOverlay({ session, timeline, recipeNames }: { session: Cook
           <section key={id} className="rounded-2xl border-2 border-destructive bg-card p-5 text-center shadow-lg">
             <BellRing className="mx-auto size-12 animate-bounce text-destructive" />
             <h2 className="mt-3 text-3xl font-bold leading-tight">{job ? jobLabel(job) : "Cronometru"}</h2>
-            {job && <p className="mt-1 text-sm text-muted-foreground">{job.recipeIds.map((r) => recipeNames[r]).join(" + ")}</p>}
+            {job && <RecipeChips className="mt-2 justify-center" recipeIds={job.recipeIds} recipeNames={recipeNames} colors={colors} size="lg" />}
             <p className="mt-4 text-xl">{job ? doneMessage(job) : "Timpul a trecut."}</p>
+            {job && <AlarmDestination job={job} plan={plan} recipeNames={recipeNames} equipmentNames={equipmentNames} />}
             <p className="mt-1 text-sm text-muted-foreground">
               Mai trebuie? Adaugă minute. · a sunat acum {countdown(session.now - t.endsAt)}
             </p>
@@ -152,6 +167,19 @@ export function AlarmOverlay({ session, timeline, recipeNames }: { session: Cook
           </section>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Ce faci cu ce ai scos: „Împarte-l direct în cele 3 caserole …”. */
+function AlarmDestination({ job, plan, recipeNames, equipmentNames }: { job: Scheduled; plan: SessionPlan; recipeNames: Record<string, string>; equipmentNames: Record<string, string> }) {
+  const d = destinationOf(job, plan);
+  if (!d) return null;
+  const t = destinationText(d, plan, recipeNames, equipmentNames, job.units);
+  return (
+    <div className="mt-3 rounded-xl border-2 border-emerald-500/60 bg-emerald-500/10 px-4 py-3 text-left">
+      <p className="text-lg font-semibold leading-snug">{t.title}</p>
+      {t.detail && <p className="mt-0.5 text-sm text-muted-foreground">{t.detail}</p>}
     </div>
   );
 }

@@ -120,18 +120,18 @@ export const PRESET_RECIPES: SeedRecipe[] = [
     name: "Burger bowl cu cartofi la airfryer",
     category: "cina",
     keepsDays: 3,
-    notes: "Salata și sosul se țin separat și se pun după ce încălzești carnea și cartofii.",
+    notes: "Salata se ține separat și se pune după ce încălzești carnea și cartofii. Iaurtul vine în cutia lui, neîncălzit.",
     steps: [
       { action: "curata-cartofi", text: "Taie cartofii wedges (cu coajă).", lines: [["Cartofi albi", 500, "g", [300, 700]]] },
       { action: "af-cartofi", text: "Cartofii la airfryer cu ulei și sare.", lines: [["Ulei de floarea-soarelui", 6, "g"], ["Sare", 1, "g"]] },
       { action: "rumeneste-tocata", text: "Rumenește carnea cu sare și piper.", lines: [["Carne tocată de vită 90/10", 200, "g", [150, 240]], ["Piper negru", 0.5, "g"]] },
       {
         action: "taie-legume",
-        text: "Taie salata, roșiile, castraveții murați și ceapa roșie.",
-        lines: [["Salată iceberg", 100, "g"], ["Roșii", 100, "g"], ["Castraveți murați", 50, "g"], ["legacy:Ceapa Rosie", 30, "g"]],
+        text: "Taie salata, roșiile și ceapa roșie.",
+        lines: [["Salată iceberg", 100, "g"], ["Roșii", 100, "g"], ["legacy:Ceapa Rosie", 30, "g"]],
       },
-      { action: "amesteca", text: "Sosul: iaurt, muștar, ketchup.", lines: [["off:4056489683759", 50, "g"], ["Muștar", 10, "g"], ["Ketchup", 15, "g"]] },
       { action: "asambleaza", text: "Pune feliile de brânză peste carnea caldă.", lines: [["legacy:High Protein Mature Cheese slices - Milbona (Lidl)", 1, "felie"]] },
+      { action: "asambleaza", text: "Separat, lângă caserolă: o cutie de iaurt grecesc. Nu-l încălzi.", lines: [["off:4056489683759", 100, "g"]] },
     ],
   },
   {

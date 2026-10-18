@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle, ArrowRight, Check, ChevronLeft, ChevronRight, Clock, Droplets, Flame, Hourglass, Lightbulb, Minus, PartyPopper, Play, Plus,
-  Sparkles, Thermometer, Undo2, Utensils, X,
+  PackageOpen, Sparkles, Thermometer, Undo2, Utensils, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -11,21 +11,18 @@ import { cn } from "@/lib/utils";
 import { grams, minutes as fmtDuration } from "@/lib/format";
 import { shortDate, weekdayName } from "@/domain/plan";
 import type { Scheduled, SessionPlan } from "@/domain/cooking";
-import { blockers, isRinging, remainingMs, suggestedStep, timerMinutes } from "@/domain/cook-guide";
+import { blockers, boxContents, destinationOf, isRinging, remainingMs, suggestedStep, timerMinutes } from "@/domain/cook-guide";
 import { tasteNotes } from "@/domain/taste";
 import { jobLabel, type CookSession } from "./use-cook-session";
-import { AddTime, countdown, Nudge, shortRecipe, TimerTray } from "./timers";
+import { AddTime, countdown, Nudge, TimerTray } from "./timers";
+import { colorBar, destinationText, recipeColors, RecipeChips, shortRecipe, unitName } from "./cook-text";
+
+export { unitName };
 
 export const clock = (ms: number) => {
   const m = Math.max(0, Math.floor(ms / 60_000));
   return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`;
 };
-
-/** „ochiul 2”, „Tigaie Ingenio 28cm”, „Vas ceramic mic 1”. */
-export function unitName(k: string, equipmentNames: Record<string, string>) {
-  const [id, n] = k.split("#");
-  return id === "aragaz" ? `ochiul ${n}` : (equipmentNames[id] ?? id).replace(/ \(.*\)$/, "") + (id === "vas-ceramic" ? ` ${n}` : "");
-}
 
 /** Ingredientele unui pas, adunate pe nume, cu împărțirea pe rețete când sunt mai multe. */
 export function linesSummary(s: Scheduled, recipeNames: Record<string, string>) {
@@ -89,6 +86,7 @@ export function CookMode({ session, plan, recipeNames, equipmentNames }: Props) 
           session={session}
           timeline={timeline}
           recipeNames={recipeNames}
+          colors={recipeColors(plan)}
           exclude={current?.id}
           onShow={(id) => session.show(id)}
         />
@@ -124,6 +122,10 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
   const showTemp = job.task.tempC != null && job.units.some((u) => /^(cuptor|airfryer)/.test(u));
   const portion = job.task.kind === "portion" ? plan.portions.find((p) => p.recipeId === job.recipeIds[0]) : undefined;
   const halfway = timer ? timer.halfAt != null : /la jumătate/i.test(job.task.hint ?? "");
+  const colors = recipeColors(plan);
+  const destination = destinationOf(job, plan);
+  const dest = destination ? destinationText(destination, plan, recipeNames, equipmentNames, job.units) : null;
+  const contents = portion ? boxContents(portion.recipeId, plan) : null;
 
   const finish = () => {
     if (timer) session.stopTimer(job.id);
@@ -162,8 +164,11 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
   return (
     <>
       <main className="flex-1 overflow-y-auto overscroll-contain">
+        {/* Culoarea rețetei: o vezi din colțul ochiului și știi pentru ce e pasul. */}
+        <div className="sticky top-0 z-10 h-2" style={{ background: colorBar(job.recipeIds, colors) }} aria-hidden />
         <div className="mx-auto w-full max-w-2xl animate-in fade-in slide-in-from-right-4 space-y-5 px-5 py-5 duration-300">
           <div>
+            {job.recipeIds.length > 0 && <RecipeChips className="mb-3" recipeIds={job.recipeIds} recipeNames={recipeNames} colors={colors} size="lg" />}
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               <span>{job.task.kind === "prep" ? "Pregătire" : job.task.kind === "portion" ? "La final" : "Gătit"}</span>
               {job.batches > 1 && <span className="rounded bg-primary px-1.5 py-0.5 text-primary-foreground">Tura {job.batch} din {job.batches}</span>}
@@ -175,7 +180,12 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
                 <div className="mt-2 space-y-3">
                   {texts.map((t) => (
                     <p key={t.recipeId + t.text} className="text-[1.7rem] font-semibold leading-snug">
-                      {texts.length > 1 && <span className="block text-sm font-medium text-muted-foreground">{recipeNames[t.recipeId]}</span>}
+                      {texts.length > 1 && (
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+                          <span className="size-2.5 rounded-full" style={{ backgroundColor: colors[t.recipeId] }} />
+                          {recipeNames[t.recipeId]}
+                        </span>
+                      )}
                       {t.text}
                     </p>
                   ))}
@@ -257,18 +267,47 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
             </ul>
           )}
 
+          {dest && (
+            <div className="flex gap-3 rounded-xl border-2 border-emerald-500/60 bg-emerald-500/10 p-4">
+              <PackageOpen className="mt-1 size-6 shrink-0 text-emerald-600" />
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Când e gata</p>
+                <p className="text-lg font-semibold leading-snug">{dest.title}</p>
+                {dest.detail && <p className="mt-0.5 text-base text-muted-foreground">{dest.detail}</p>}
+                {job.batches > 1 && destination?.kind === "boxes" && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    E tura {job.batch} din {job.batches}: împarte și tura asta, la fel, în toate caserolele.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           {portion && (
-            <div className="rounded-xl border p-4">
+            <div className="rounded-xl border-2 p-4" style={{ borderColor: colors[portion.recipeId] }}>
               <p className="text-lg font-semibold">
-                {Math.ceil(portion.servings)} {Math.ceil(portion.servings) === 1 ? "caserolă" : "caserole"}, câte una pentru:
+                În fiecare din cele {Math.ceil(portion.servings)} {Math.ceil(portion.servings) === 1 ? "caserolă" : "caserole"} trebuie să ai:
               </p>
-              <ul className="mt-1 text-lg">
-                {portion.days.map((d) => (
-                  <li key={d}>
-                    {weekdayName(d)} {shortDate(d)}
+              <ul className="mt-2 space-y-1.5 text-lg">
+                {contents!.components.map((c) => (
+                  <li key={c} className="flex items-start gap-2">
+                    <Check className="mt-1 size-5 shrink-0 text-emerald-600" /> {c}
                   </li>
                 ))}
               </ul>
+              {contents!.finishing.length > 0 && (
+                <>
+                  <p className="mt-3 text-sm font-medium text-muted-foreground">Și ce ai pus la final:</p>
+                  <ul className="mt-1 space-y-1 text-base">
+                    {contents!.finishing.map((f) => (
+                      <li key={f}>• {f}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              <p className="mt-3 text-sm text-muted-foreground">
+                Câte una pentru: {portion.days.map((d) => `${weekdayName(d)} ${shortDate(d)}`).join(", ")}.
+              </p>
               {portion.warnings.map((w) => (
                 <p key={w} className="mt-2 text-sm text-muted-foreground">❄️ {w}</p>
               ))}
@@ -339,16 +378,6 @@ function StepView({ job, index, session, plan, recipeNames, equipmentNames }: Pr
             <button className="flex items-center gap-1.5 text-sm text-muted-foreground underline underline-offset-4" onClick={() => session.toggleDone(job.id)}>
               <Undo2 className="size-4" /> Nu l-am făcut, debifează
             </button>
-          )}
-
-          {job.recipeIds.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {job.recipeIds.map((r) => (
-                <span key={r} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  {recipeNames[r]}
-                </span>
-              ))}
-            </div>
           )}
 
           {after && !done && (

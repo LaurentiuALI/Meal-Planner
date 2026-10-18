@@ -38,6 +38,8 @@ export type Task = {
   perBatch: boolean;
   deps: string[];
   kind: "prep" | "cook" | "portion";
+  /** Asamblarea de la finalul rețetei (pune brânza, presară parmezan): vine după tot, nu „produce” o componentă. */
+  assembly: boolean;
   alternatives: string[];
   /** Acțiunea din rețetă, dacă sesiunea a ales altă metodă (ex. tigaie în loc de airfryer). */
   switchedFrom: string | null;
@@ -141,6 +143,7 @@ function buildTasks(input: CookInput) {
     let carry: CookLine[] = [];
     let vesselLoad = 0;
     let prevVessels: string[] = [];
+    let prevBoiled = false;
     for (const s of r.steps) {
       const action = s.actionId ? actions.get(s.actionId) : undefined;
       const lines: CookLine[] = s.lines.map((l) => ({
@@ -160,16 +163,20 @@ function buildTasks(input: CookInput) {
         // Pașii care continuă în același vas (ceapă → carne → sos) adună conținutul; rumenirea în ture nu.
         const myVessels = action!.equipment.flat().filter((id) => vessels.has(id));
         // Ce se fierbe în apă (orez, paste, cartofi) cere vas curat, nu continuă în tigaia de dinainte.
-        const continues = action!.loadFactor <= 1 && myVessels.some((id) => prevVessels.includes(id));
+        // Și invers: după ce ai fiert ceva în apă, pasul următor nu continuă în apa aceea.
+        const continues = action!.loadFactor <= 1 && !prevBoiled && myVessels.some((id) => prevVessels.includes(id));
         vesselLoad = action!.perBatch || !continues ? loadG : vesselLoad + loadG;
         if (!action!.perBatch) loadG = vesselLoad;
         prevVessels = myVessels;
+        prevBoiled = action!.loadFactor > 1;
         deps = [carry.length ? prevPrep : null, continues ? prevCook : null].filter((d): d is string => !!d);
         carry = [];
       } else {
         const isLast = s === r.steps[r.steps.length - 1];
-        // Pregătirea în lanț (tai → condimentez) rămâne în ordine; asamblarea finală așteaptă tot.
-        deps = isLast && prevCook ? [...ids] : carry.length && prevPrep ? [prevPrep] : [];
+        // Pregătirea în lanț (tai → condimentez) rămâne în ordine; asamblarea (ultimul pas sau „asamblează”
+        // după gătit) așteaptă tot.
+        const assembles = !!prevCook && (isLast || action?.id === "asambleaza");
+        deps = assembles ? [...ids] : carry.length && prevPrep ? [prevPrep] : [];
         carry.push(...lines);
       }
       const base = action ?? DEFAULT_STEP;
@@ -194,6 +201,7 @@ function buildTasks(input: CookInput) {
         perBatch: action?.perBatch ?? false,
         deps,
         kind: isPrep ? "prep" : "cook",
+        assembly: isPrep && !!prevCook && (action?.id === "asambleaza" || s === r.steps[r.steps.length - 1]),
         alternatives: action?.alternatives ?? [],
         switchedFrom: null,
       });
@@ -205,8 +213,8 @@ function buildTasks(input: CookInput) {
       tasks.push({
         id: `${r.id}:portion`,
         actionId: null,
-        title: `Porționează în ${Math.ceil(servings)} ${Math.ceil(servings) === 1 ? "caserolă" : "caserole"}`,
-        texts: [{ recipeId: r.id, text: "Lasă să se răcească puțin, apoi împarte egal. Capacul după ce nu mai iese abur." }],
+        title: `Verifică și închide ${Math.ceil(servings) === 1 ? "caserola" : `cele ${Math.ceil(servings)} caserole`}`,
+        texts: [{ recipeId: r.id, text: "Uită-te în fiecare caserolă: să aibă tot ce e mai jos, cam în cantități egale. Pune capacul după ce nu mai iese abur." }],
         recipeIds: [r.id],
         lines: [],
         inputs: [],
@@ -221,6 +229,7 @@ function buildTasks(input: CookInput) {
         perBatch: false,
         deps: [...ids],
         kind: "portion",
+        assembly: false,
         alternatives: [],
         switchedFrom: null,
       });
@@ -292,6 +301,7 @@ function withPreheat(tasks: Task[]): Task[] {
     perBatch: false,
     deps: [],
     kind: "prep",
+    assembly: false,
     alternatives: [],
     switchedFrom: null,
   };

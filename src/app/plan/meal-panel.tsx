@@ -3,29 +3,32 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Minus, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { BookOpen, Check, Loader2, Minus, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MacroLine } from "@/components/macros";
 import { cn } from "@/lib/utils";
 import { grams } from "@/lib/format";
 import { recipeLines } from "@/domain/macros";
-import { lineServingGrams, mealMacros, shortDate, SLOT_LABELS, weekdayName, type Meal } from "@/domain/plan";
+import { lineServingGrams, mealMacros, type Meal } from "@/domain/plan";
 import { TASTE_LABEL } from "@/domain/taste";
 import type { Ingredient, Recipe } from "@/domain/types";
 import { removeMealAction, updateMealAction } from "@/server/plan-actions";
 
-export function MealSheet({
+/** Detaliile unei mese, desfăcute direct în plan: ingredientele per porție (ajustabile), mâncat/sărit, rețeta. */
+export function MealPanel({
   meal,
   recipe,
   ingredients,
+  returnTo,
   onClose,
 }: {
   meal: Meal;
   recipe?: Recipe;
   ingredients: Record<string, Ingredient>;
+  /** Unde te întoarce editorul de rețete după salvare. */
+  returnTo: string;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -45,22 +48,21 @@ export function MealSheet({
     });
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="pr-6 leading-snug">
-            {recipe ? (
-              <Link href={`/retete/${recipe.id}`} className="hover:underline">
-                {recipe.name}
+    <div className="space-y-3 rounded-lg border bg-background p-3 animate-in fade-in slide-in-from-top-1 duration-200">
+        {recipe && (
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/retete/${recipe.id}/editare?inapoi=${encodeURIComponent(returnTo)}`}>
+                <Pencil /> Editează rețeta
               </Link>
-            ) : (
-              (ingredient?.name ?? "Masă")
-            )}
-          </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            {weekdayName(meal.date)} {shortDate(meal.date)} · {SLOT_LABELS[meal.slot]}
-          </p>
-        </DialogHeader>
+            </Button>
+            <Button asChild size="sm" variant="ghost">
+              <Link href={`/retete/${recipe.id}`}>
+                <BookOpen /> Vezi rețeta
+              </Link>
+            </Button>
+          </div>
+        )}
 
         <div className="rounded-lg bg-muted/60 p-3">
           <MacroLine m={m} />
@@ -175,7 +177,6 @@ export function MealSheet({
         <Button variant="ghost" className="justify-start text-destructive" disabled={pending} onClick={() => act(() => removeMealAction(meal.id), true)}>
           <Trash2 /> Scoate din plan
         </Button>
-      </DialogContent>
-    </Dialog>
+    </div>
   );
 }

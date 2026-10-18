@@ -1,4 +1,4 @@
-import type { Scheduled } from "./cooking";
+import type { Scheduled, SessionPlan } from "./cooking";
 
 /**
  * Modul ghidat al sesiunii de gătit: ce pas urmează, ce trebuie așteptat și cronometrele.
@@ -70,4 +70,123 @@ export function doneMessage(s: Scheduled): string {
   if (s.units.some((u) => u.startsWith("cuptor"))) return "Verifică vasul din cuptor.";
   if (s.units.some((u) => u.startsWith("aragaz"))) return "Verifică dacă e gata.";
   return "Timpul a trecut.";
+}
+
+// ─── Unde merge ce ai gătit ───
+
+export type BoxPart = {
+  recipeId: string;
+  /** Cât din ce iese din pas e al rețetei (pas comun mai multor rețete), 0–1. */
+  share: number;
+  /** Câte caserole; null = se mănâncă azi, nu se pune în caserole. */
+  boxes: number | null;
+};
+
+export type Destination =
+  /** Componentă gata: se împarte direct în caserole (sau se pune deoparte pentru azi). */
+  | { kind: "boxes"; parts: BoxPart[] }
+  /** Rămâne în același vas: pasul următor continuă acolo. */
+  | { kind: "stays"; next: Scheduled }
+  /** Intră în alt pas (ce ai tăiat merge în tigaie, orezul se amestecă în wok). */
+  | { kind: "into"; next: Scheduled };
+
+const firstJobOf = (taskId: string, timeline: Scheduled[]) => timeline.find((j) => j.task.id === taskId);
+
+/** Pașii aceleiași rețete care folosesc ce iese din `job` (fără asamblarea și porționarea de la final). */
+function consumers(job: Scheduled, timeline: Scheduled[]): Scheduled[] {
+  const tasks = new Map(timeline.map((j) => [j.task.id, j.task]));
+  return [...tasks.values()]
+    .filter((t) => t.id !== job.task.id && t.kind !== "portion" && !t.assembly && t.deps.includes(job.task.id))
+    .filter((t) => t.recipeIds.some((r) => job.recipeIds.includes(r)))
+    .map((t) => firstJobOf(t.id, timeline)!)
+    .sort((a, b) => a.start - b.start);
+}
+
+/** Ustensilele în care stă mâncarea (nu ochiul de aragaz sau cuptorul în sine). */
+const vessels = (units: string[]) => units.filter((u) => !/^(aragaz|cuptor)#/.test(u));
+
+export function boxCount(recipeId: string, plan: Pick<SessionPlan, "timeline" | "portions">): number | null {
+  const portioned = plan.timeline.some((j) => j.task.kind === "portion" && j.recipeIds.includes(recipeId));
+  const p = plan.portions.find((x) => x.recipeId === recipeId);
+  return portioned && p ? Math.ceil(p.servings) : null;
+}
+
+export function destinationOf(job: Scheduled, plan: Pick<SessionPlan, "timeline" | "portions">): Destination | null {
+  if (job.task.kind === "portion" || job.task.assembly || job.recipeIds.length === 0) return null;
+  const next = consumers(job, plan.timeline)[0];
+  if (next) {
+    const mine = vessels(job.units);
+    return mine.length && vessels(next.units).some((u) => mine.includes(u)) ? { kind: "stays", next } : { kind: "into", next };
+  }
+  const weighed = job.inputs.filter((l) => !l.toTaste);
+  const total = weighed.reduce((a, l) => a + l.grams, 0);
+  return {
+    kind: "boxes",
+    parts: job.recipeIds.map((recipeId) => ({
+      recipeId,
+      share: total > 0 ? weighed.filter((l) => l.recipeId === recipeId).reduce((a, l) => a + l.grams, 0) / total : 1 / job.recipeIds.length,
+      boxes: boxCount(recipeId, plan),
+    })),
+  };
+}
+
+/** Nume scurt de produs: „Pulpe de pui dezosate, fără piele” → „pulpe de pui”, „Fasole rosie - Bio...” → „fasole rosie”. */
+export function shortName(name: string): string {
+  const head = name.split(/,| - |\(|\d/)[0].trim().toLowerCase();
+  // Două cuvinte „pline”: „pulpe de pui”, nu „pulpe de”.
+  const out: string[] = [];
+  let full = 0;
+  for (const w of head.split(/\s+/)) {
+    if (full === 2) break;
+    out.push(w);
+    if (!/^(de|cu|din|in|în|si|și|la|pe)$/.test(w)) full++;
+  }
+  return out.join(" ");
+}
+
+/** Tot ce a intrat (în aceeași rețetă) până la pasul ăsta: tocănița = ceapă + carne + fasole. */
+function upstream(job: Scheduled, recipeId: string, timeline: Scheduled[]): Scheduled[] {
+  const byTask = new Map(timeline.map((j) => [j.task.id, j]));
+  const out = new Map<string, Scheduled>();
+  const visit = (j: Scheduled) => {
+    if (out.has(j.task.id)) return;
+    out.set(j.task.id, j);
+    for (const d of j.task.deps) {
+      const dep = byTask.get(d);
+      if (dep && dep.task.recipeIds.includes(recipeId) && dep.task.kind !== "portion") visit(dep);
+    }
+  };
+  visit(job);
+  return [...out.values()];
+}
+
+/** „orez”, „carne tocata, fasole rosie, linte”: ce e în componentă, după cântărit, cele mai grele întâi. */
+export function componentLabel(job: Scheduled, recipeId: string, timeline: Scheduled[] = []): string {
+  const grams = new Map<string, number>();
+  for (const j of upstream(job, recipeId, timeline.length ? timeline : [job])) {
+    for (const l of j.task.inputs) if (l.recipeId === recipeId && !l.toTaste) grams.set(l.name, (grams.get(l.name) ?? 0) + l.grams);
+  }
+  const names: string[] = [];
+  for (const [name] of [...grams].sort((a, b) => b[1] - a[1])) {
+    const short = shortName(name);
+    if (!names.some((n) => n.split(" ")[0] === short.split(" ")[0])) names.push(short);
+  }
+  return names.length ? names.slice(0, 3).join(", ") : job.task.title.replace(/^[^·]+· /, "").toLowerCase();
+}
+
+/** Ce trebuie să fie în fiecare caserolă a unei rețete: componentele gătite și ce pui la final. */
+export function boxContents(recipeId: string, plan: Pick<SessionPlan, "timeline" | "portions">): { components: string[]; finishing: string[] } {
+  const seen = new Set<string>();
+  const components: string[] = [];
+  const finishing: string[] = [];
+  for (const j of plan.timeline) {
+    if (!j.recipeIds.includes(recipeId) || seen.has(j.task.id)) continue;
+    seen.add(j.task.id);
+    if (j.task.assembly) {
+      finishing.push(...j.task.texts.filter((t) => t.recipeId === recipeId).map((t) => t.text));
+      continue;
+    }
+    if (destinationOf(j, plan)?.kind === "boxes") components.push(componentLabel(j, recipeId, plan.timeline));
+  }
+  return { components: [...new Set(components)], finishing };
 }

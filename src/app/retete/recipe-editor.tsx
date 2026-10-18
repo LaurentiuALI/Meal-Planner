@@ -31,10 +31,13 @@ export function RecipeEditor({
   initial,
   initialIngredients,
   actions,
+  returnTo,
 }: {
   initial: Recipe;
   initialIngredients: Record<string, Ingredient>;
   actions: Action[];
+  /** Venit din plan: după salvare te întorci acolo. */
+  returnTo?: string;
 }) {
   const router = useRouter();
   const [recipe, setRecipe] = useState(initial);
@@ -89,7 +92,7 @@ export function RecipeEditor({
         return;
       }
       toast.success("Rețeta a fost salvată");
-      router.push(`/retete/${res.id}`);
+      router.push(returnTo ?? `/retete/${res.id}`);
       router.refresh();
     });
   }

@@ -8,10 +8,11 @@ import { cn } from "@/lib/utils";
 import { grams, minutes as fmtDuration } from "@/lib/format";
 import { shortDate, weekdayName } from "@/domain/plan";
 import type { SessionPlan } from "@/domain/cooking";
-import { suggestedStep, timerMinutes } from "@/domain/cook-guide";
+import { destinationOf, suggestedStep, timerMinutes } from "@/domain/cook-guide";
 import { tasteNotes } from "@/domain/taste";
 import { jobLabel, useCookSession } from "./use-cook-session";
-import { clock, CookMode, linesSummary, unitName } from "./cook-mode";
+import { clock, CookMode, linesSummary } from "./cook-mode";
+import { colorBar, destinationText, recipeColors, RecipeChips, unitName } from "./cook-text";
 import { AlarmOverlay, Nudge, TimerTray } from "./timers";
 
 const at = (min: number) => clock(min * 60_000);
@@ -33,6 +34,7 @@ export function SessionView({
   const next = suggestedStep(plan.timeline, state);
   const doneCount = state.done.filter((id) => plan.timeline.some((s) => s.id === id)).length;
   const unit = (k: string) => unitName(k, equipmentNames);
+  const colors = recipeColors(plan);
 
   return (
     <div className="mt-4 space-y-4">
@@ -100,7 +102,7 @@ export function SessionView({
         </div>
       )}
 
-      <TimerTray session={session} timeline={plan.timeline} recipeNames={recipeNames} onShow={(id) => session.show(id)} />
+      <TimerTray session={session} timeline={plan.timeline} recipeNames={recipeNames} colors={colors} onShow={(id) => session.show(id)} />
       <Nudge session={session} />
 
       <Tabs defaultValue="pasi">
@@ -119,8 +121,9 @@ export function SessionView({
               return (
                 <li
                   key={s.id}
-                  className={cn("rounded-lg border p-3 transition-opacity", done && "opacity-50", isNow && "border-primary ring-1 ring-primary/40")}
+                  className={cn("relative overflow-hidden rounded-lg border p-3 pl-4 transition-opacity", done && "opacity-50", isNow && "border-primary ring-1 ring-primary/40")}
                 >
+                  <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: colorBar(s.recipeIds, colors).replace("90deg", "180deg") }} aria-hidden />
                   <div className="flex items-start gap-3">
                     <button
                       onClick={() => session.toggleDone(s.id)}
@@ -188,15 +191,13 @@ export function SessionView({
                           ))}
                         </ul>
                       )}
-                      {s.recipeIds.length > 0 && (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {s.recipeIds.map((r) => (
-                            <span key={r} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                              {recipeNames[r]}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                      {(() => {
+                        const d = destinationOf(s, plan);
+                        if (!d) return null;
+                        const t = destinationText(d, plan, recipeNames, equipmentNames, s.units);
+                        return <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">→ {t.title}</p>;
+                      })()}
+                      {s.recipeIds.length > 0 && <RecipeChips className="mt-1.5" recipeIds={s.recipeIds} recipeNames={recipeNames} colors={colors} />}
 
                     </div>
                   </div>
@@ -262,7 +263,7 @@ export function SessionView({
       </Tabs>
 
       {state.open && <CookMode session={session} plan={plan} recipeNames={recipeNames} equipmentNames={equipmentNames} />}
-      <AlarmOverlay session={session} timeline={plan.timeline} recipeNames={recipeNames} />
+      <AlarmOverlay session={session} plan={plan} recipeNames={recipeNames} equipmentNames={equipmentNames} />
     </div>
   );
 }

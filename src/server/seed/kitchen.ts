@@ -54,7 +54,9 @@ export const ACTIONS: Action[] = [
   // Airfryer
   act({ id: "af-cartofi", name: "Airfryer · cartofi cuburi / wedges", equipment: [["airfryer"]], alternatives: ["cuptor-cartofi"], minutes: 20, activeMinutes: 1, tempC: 200, perBatch: true, hint: "Scutură coșul la jumătate" }),
   act({ id: "af-cartof-dulce", name: "Airfryer · cartof dulce cuburi", equipment: [["airfryer"]], alternatives: ["cuptor-cartofi"], minutes: 18, activeMinutes: 1, tempC: 200, perBatch: true, hint: "Scutură coșul la jumătate" }),
-  act({ id: "af-congelate", name: "Airfryer · cartofi / legume congelate", equipment: [["airfryer"]], alternatives: ["cuptor-legume"], minutes: 16, activeMinutes: 1, tempC: 200, perBatch: true, hint: "Scutură coșul la jumătate" }),
+  // Cartofii pai congelați ies buni doar la airfryer: fără alternative, sesiunea nu-i mută la cuptor.
+  act({ id: "af-cartofi-pai", name: "Airfryer · cartofi pai congelați", equipment: [["airfryer"]], minutes: 16, activeMinutes: 1, tempC: 200, perBatch: true, hint: "Scutură coșul la jumătate" }),
+  act({ id: "af-congelate", name: "Airfryer · legume congelate", equipment: [["airfryer"]], alternatives: ["cuptor-legume"], minutes: 16, activeMinutes: 1, tempC: 200, perBatch: true, hint: "Scutură coșul la jumătate" }),
   act({ id: "af-legume", name: "Airfryer · legume (broccoli, ardei, dovlecel)", equipment: [["airfryer"]], alternatives: ["cuptor-legume", "soteaza-legume"], minutes: 12, activeMinutes: 1, tempC: 190, perBatch: true, hint: "Scutură coșul la jumătate" }),
   act({ id: "af-pui", name: "Airfryer · piept / pulpe de pui", equipment: [["airfryer"]], alternatives: ["tigaie-pui", "cuptor-pui"], minutes: 16, activeMinutes: 1, tempC: 190, capacityG: 500, perBatch: true, hint: "Întoarce la jumătate" }),
   act({ id: "af-peste", name: "Airfryer · pește", equipment: [["airfryer"]], minutes: 10, activeMinutes: 1, tempC: 190, capacityG: 500, perBatch: true }),
