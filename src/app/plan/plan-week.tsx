@@ -12,9 +12,10 @@ import { cn } from "@/lib/utils";
 import { addDays, mondayOf, dayMacros, mealMacros, shortDate, SLOT_LABELS, weekDates, weekday, weekdayName, type Meal, type MealSlot } from "@/domain/plan";
 import type { Settings } from "@/domain/types";
 import type { PlanBundle } from "@/server/plan";
-import { addMealAction, clearWeekAction, copyDayAction, proposeWeekAction } from "@/server/plan-actions";
+import { addMealAction, clearWeekAction, copyDayAction } from "@/server/plan-actions";
 import { MealSheet } from "./meal-sheet";
 import { AddMealDialog } from "./add-meal-dialog";
+import { ProposeDialog } from "./propose-dialog";
 
 const SLOTS: MealSlot[] = ["pranz", "gustare", "cina", "extra"];
 
@@ -37,6 +38,7 @@ export function PlanWeek({
   const [pending, start] = useTransition();
   const [openMeal, setOpenMeal] = useState<string | null>(null);
   const [adding, setAdding] = useState<{ date: string; slot: MealSlot } | null>(null);
+  const [proposing, setProposing] = useState(false);
   const todayRef = useRef<HTMLElement>(null);
 
   const recipes = (id: string) => bundle.recipes[id];
@@ -91,10 +93,7 @@ export function PlanWeek({
         </div>
         <div className="flex items-center gap-1">
           {pending && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          <Button size="sm" onClick={() => run(
-                () => proposeWeekAction(monday),
-                (n) => (n ? "Propunere nouă pentru luni–miercuri. Apasă din nou pentru alta." : "Nimic de schimbat: mesele de luni–miercuri sunt deja mâncate sau modificate de tine."),
-              )} disabled={pending}>
+          <Button size="sm" onClick={() => setProposing(true)} disabled={pending}>
             <Sparkles /> Propune
           </Button>
           <DropdownMenu>
@@ -266,6 +265,7 @@ export function PlanWeek({
           onClose={() => setOpenMeal(null)}
         />
       )}
+      <ProposeDialog monday={monday} settings={settings} open={proposing} onClose={() => setProposing(false)} />
       <AddMealDialog key={adding ? `${adding.date}-${adding.slot}` : "closed"} target={adding} onClose={() => setAdding(null)} />
     </div>
   );

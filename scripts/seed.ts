@@ -97,7 +97,7 @@ async function main() {
       }),
     }));
     return {
-      id: `preset-${slug(r.name)}`, name: r.name, category: r.category, servings: 1, freezes: r.freezes ?? false,
+      id: `preset-${r.key ?? slug(r.name)}`, name: r.name, category: r.category, servings: 1, freezes: r.freezes ?? false,
       keepsDays: r.keepsDays ?? 3, notes: r.notes ?? "", steps, preset: true,
     };
   });

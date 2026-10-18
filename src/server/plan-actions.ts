@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { addMeal, clearWeek, copyDay, proposeWeek, removeMeal, updateMeal } from "./plan";
+import { addMeal, applyProposal, clearWeek, copyDay, proposalFor, removeMeal, updateMeal } from "./plan";
 import { listRecipes, recipeBundle } from "./recipes";
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -41,10 +41,13 @@ export async function copyDayAction(from: string, to: string[]) {
   done();
 }
 
-export async function proposeWeekAction(monday: string) {
-  const changed = await proposeWeek(date.parse(monday));
+export async function proposalAction(monday: string) {
+  return proposalFor(date.parse(monday));
+}
+
+export async function applyProposalAction(monday: string, picks: { slot: string; recipeId: string }[]) {
+  await applyProposal(date.parse(monday), z.array(z.object({ slot: z.enum(["pranz", "gustare", "cina"]), recipeId: z.string().min(1) })).parse(picks));
   done();
-  return changed;
 }
 
 export async function clearWeekAction(monday: string) {

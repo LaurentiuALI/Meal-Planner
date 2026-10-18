@@ -8,6 +8,8 @@ import type { RecipeCategory } from "@/domain/types";
 export type SeedLine = [key: string, amount: number, unit?: string, flex?: [number, number]];
 export type SeedStep = { action: string | null; text: string; lines?: SeedLine[]; minutes?: number };
 export type SeedRecipe = {
+  /** Id-ul de dinainte de redenumire, ca seed-ul (rulat la fiecare pornire) să nu dubleze rețeta. */
+  key?: string;
   name: string;
   category: RecipeCategory;
   freezes?: boolean;
@@ -68,15 +70,16 @@ export const PRESET_RECIPES: SeedRecipe[] = [
     ],
   },
   {
-    name: "Paste cu curcan tocat și dovlecel",
+    key: "paste-cu-curcan-tocat-si-dovlecel",
+    name: "Paste cu pui tocat și dovlecel",
     category: "pranz",
     freezes: true,
     keepsDays: 4,
     steps: [
       { action: "taie-legume", text: "Toacă ceapa, usturoiul și dovlecelul cuburi.", lines: [["Ceapă", 60, "g"], ["Usturoi", 1, "cățel"], ["Dovlecel", 150, "g"]] },
-      { action: "rumeneste-tocata", text: "Rumenește curcanul cu ceapa și usturoiul.", lines: [["Carne tocată de curcan", 180, "g", [140, 230]], ["Ulei de măsline", 5, "g"]] },
+      { action: "rumeneste-tocata", text: "Rumenește carnea tocată cu ceapa și usturoiul.", lines: [["Carne tocată de pui", 180, "g", [140, 230]], ["Ulei de măsline", 5, "g"]] },
       { action: "fierbe-sos", text: "Adaugă dovlecelul, passata și oregano; fierbe 15 minute.", lines: [["Passata / sos de roșii", 200, "g"], ["Oregano uscat", 1, "g"], ["Sare", 2, "g"]] },
-      { action: "fierbe-paste", text: "Fierbe pastele al dente și amestecă-le cu sosul.", lines: [["Paste integrale", 100, "g", [60, 150]]] },
+      { action: "fierbe-paste", text: "Fierbe pastele al dente și amestecă-le cu sosul.", lines: [["Paste", 100, "g", [60, 150]]] },
       { action: "asambleaza", text: "Presară parmezan în caserole.", lines: [["Parmezan ras", 10, "g"]] },
     ],
   },
@@ -94,7 +97,8 @@ export const PRESET_RECIPES: SeedRecipe[] = [
     ],
   },
   {
-    name: "Curry de pui cu linte roșie și orez",
+    key: "curry-de-pui-cu-linte-rosie-si-orez",
+    name: "Curry de pui cu năut și orez",
     category: "pranz",
     freezes: true,
     keepsDays: 4,
@@ -103,10 +107,10 @@ export const PRESET_RECIPES: SeedRecipe[] = [
       { action: "tigaie-pui", text: "Rumenește puiul și ceapa cu curry și turmeric.", lines: [["Ulei de floarea-soarelui", 8, "g"], ["Curry", 4, "g"], ["Turmeric", 1, "g"], ["Usturoi granulat", 2, "g"]] },
       {
         action: "fierbe-sos",
-        text: "Adaugă roșiile, lintea, spanacul și 100ml apă; fierbe până se înmoaie lintea.",
-        lines: [["Roșii tocate (conservă)", 150, "g"], ["Linte roșie", 40, "g"], ["Spanac congelat", 100, "g"], ["Sare", 2, "g"]],
+        text: "Adaugă roșiile, năutul scurs, spanacul și 50 ml apă; fierbe 10 minute.",
+        lines: [["Roșii tocate (conservă)", 150, "g"], ["Năut conservă (scurs)", 100, "g"], ["Spanac congelat", 100, "g"], ["Sare", 2, "g"]],
       },
-      { action: "asambleaza", text: "Stinge focul și amestecă iaurtul.", lines: [["Iaurt grecesc 2%", 50, "g"]] },
+      { action: "asambleaza", text: "Stinge focul și amestecă iaurtul.", lines: [["off:4056489683759", 50, "g"]] },
       { action: "fierbe-orez", text: "Fierbe orezul.", lines: [["Orez alb bob lung", 70, "g", [40, 130]]] },
     ],
   },
@@ -126,7 +130,7 @@ export const PRESET_RECIPES: SeedRecipe[] = [
         text: "Taie salata, roșiile, castraveții murați și ceapa roșie.",
         lines: [["Salată iceberg", 100, "g"], ["Roșii", 100, "g"], ["Castraveți murați", 50, "g"], ["legacy:Ceapa Rosie", 30, "g"]],
       },
-      { action: "amesteca", text: "Sosul: iaurt, muștar, ketchup.", lines: [["Iaurt grecesc 2%", 50, "g"], ["Muștar", 10, "g"], ["Ketchup", 15, "g"]] },
+      { action: "amesteca", text: "Sosul: iaurt, muștar, ketchup.", lines: [["off:4056489683759", 50, "g"], ["Muștar", 10, "g"], ["Ketchup", 15, "g"]] },
       { action: "asambleaza", text: "Pune feliile de brânză peste carnea caldă.", lines: [["legacy:High Protein Mature Cheese slices - Milbona (Lidl)", 1, "felie"]] },
     ],
   },
@@ -159,7 +163,8 @@ export const PRESET_RECIPES: SeedRecipe[] = [
     ],
   },
   {
-    name: "Chiftele de curcan cu piure și salată de varză",
+    key: "chiftele-de-curcan-cu-piure-si-salata-de-varza",
+    name: "Chiftele de pui cu piure și salată de varză",
     category: "cina",
     freezes: true,
     keepsDays: 4,
@@ -167,7 +172,7 @@ export const PRESET_RECIPES: SeedRecipe[] = [
       {
         action: "amesteca",
         text: "Amestecă carnea cu oul, ovăzul, ceapa și condimentele; formează chiftele.",
-        lines: [["Carne tocată de curcan", 220, "g", [170, 270]], ["Ou", 20, "g"], ["Fulgi de ovăz", 15, "g"], ["Ceapă", 30, "g"], ["Usturoi granulat", 2, "g"], ["Sare", 1.5, "g"]],
+        lines: [["Carne tocată de pui", 220, "g", [170, 270]], ["Ou", 20, "g"], ["Fulgi de ovăz", 15, "g"], ["Ceapă", 30, "g"], ["Usturoi granulat", 2, "g"], ["Sare", 1.5, "g"]],
       },
       { action: "af-chiftele", text: "Chiftelele la airfryer." },
       { action: "curata-cartofi", text: "Curăță cartofii.", lines: [["Cartofi albi", 450, "g", [250, 650]]] },
@@ -206,12 +211,13 @@ export const PRESET_RECIPES: SeedRecipe[] = [
     category: "gustare",
     keepsDays: 3,
     steps: [
-      { action: "blender", text: "Mixează ovăzul, oul, albușurile, banana, brânza și scorțișoara.", lines: [["off:4056489195917", 50, "g", [30, 80]], ["Ou", 1, "bucată"], ["Albuș de ou", 2, "bucată"], ["Banană", 60, "g"], ["off:20051921", 80, "g"], ["Scorțișoară", 1, "g"]] },
+      { action: "blender", text: "Mixează ovăzul, oul, albușurile, banana, brânza și scorțișoara.", lines: [["off:4056489195917", 50, "g", [30, 80]], ["Ou", 1, "bucată"], ["Albuș de ou", 2, "bucată"], ["Banană", 60, "g"], ["Brânză de vaci 2%", 80, "g"], ["Scorțișoară", 1, "g"]] },
       { action: "clatite", text: "Coace clătitele în tigaia de 28, cu foarte puțin ulei.", lines: [["Ulei de floarea-soarelui", 3, "g"]] },
     ],
   },
   {
-    name: "Bol de iaurt grecesc cu ovăz și afine",
+    key: "bol-de-iaurt-grecesc-cu-ovaz-si-afine",
+    name: "Bol de iaurt cu ovăz și afine",
     category: "gustare",
     keepsDays: 2,
     notes: "Fără gătit. Merge pus seara în caserolă (overnight oats).",
@@ -219,7 +225,7 @@ export const PRESET_RECIPES: SeedRecipe[] = [
       {
         action: "asambleaza",
         text: "Pune totul într-un bol sau într-o caserolă.",
-        lines: [["Iaurt grecesc 0%", 250, "g", [200, 350]], ["off:4056489195917", 40, "g", [20, 70]], ["legacy:Afine de Cultura camara noastra", 80, "g"], ["Miere", 10, "g"], ["Semințe de chia", 10, "g"]],
+        lines: [["off:4056489683759", 250, "g", [200, 350]], ["off:4056489195917", 40, "g", [20, 70]], ["legacy:Afine de Cultura camara noastra", 80, "g"], ["Miere", 10, "g"], ["Semințe de chia", 10, "g"]],
       },
     ],
   },
@@ -257,7 +263,7 @@ export const PRESET_RECIPES: SeedRecipe[] = [
       { action: "taie-carne", text: "Taie puiul fâșii.", lines: [["Piept de pui", 160, "g", [120, 220]]] },
       { action: "tigaie-pui", text: "Rumenește puiul cu boia și usturoi.", lines: [["Ulei de măsline", 5, "g"], ["Boia dulce", 2, "g"], ["Usturoi granulat", 1, "g"], ["Sare", 1, "g"]] },
       { action: "taie-legume", text: "Taie salata și roșia.", lines: [["Salată romană", 50, "g"], ["Roșii", 80, "g"], ["Porumb conservă (scurs)", 40, "g"]] },
-      { action: "asambleaza", text: "Unge lipiile cu iaurt și rulează.", lines: [["Lipie (tortilla)", 2, "bucată", [60, 180]], ["Iaurt grecesc 2%", 50, "g"]] },
+      { action: "asambleaza", text: "Unge lipiile cu iaurt și rulează.", lines: [["Lipie (tortilla)", 2, "bucată", [60, 180]], ["off:4056489683759", 50, "g"]] },
     ],
   },
   {

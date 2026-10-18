@@ -8,6 +8,7 @@ import { kcalFrom } from "@/domain/macros";
 import type { Ingredient } from "@/domain/types";
 import type { AisleId } from "@/domain/aisles";
 import { aisleFromOffCategories } from "@/domain/aisles";
+import { blankIngredient } from "@/lib/ingredient-defaults";
 
 export type IngredientHit = Candidate & {
   per100: Ingredient["per100"];
@@ -211,3 +212,71 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeResult> {
   }
   return { kind: "none", barcode: code };
 }
+
+/** Un cod scanat, ca formular de confirmat: produsul tău, cel din OpenFoodFacts sau unul gol, de completat de pe etichetă. */
+export async function scanLookup(barcode: string): Promise<{ found: "local" | "off" | "none"; draft: IngredientInput }> {
+  const res = await lookupBarcode(barcode);
+  if (res.kind === "local") {
+    const i = await getIngredient(res.id);
+    if (i) {
+      return { found: "local", draft: { ...rowFields(i), verified: i.verified } };
+    }
+  }
+  if (res.kind === "off") return { found: "off", draft: { ...res.draft, lidl: true, verified: false } };
+  return { found: "none", draft: blankIngredient(barcode.replace(/\D/g, "")) };
+}
+
+/**
+ * Produsul scanat ia locul celui din rețete (de obicei un generic din catalog): rețetele și mesele
+ * din plan trec pe el. Porțiile („cățel”, „bucată”), raionul și felul în care se folosește
+ * (condiment, ulei, mereu în casă) vin de la cel vechi dacă produsul nou nu le are.
+ * Întoarce câte rețete s-au schimbat.
+ */
+export async function replaceIngredient(oldId: string, newId: string): Promise<number> {
+  if (oldId === newId) return 0;
+  const rows = await db.select().from(t.ingredients).where(inArray(t.ingredients.id, [oldId, newId]));
+  const old = rows.find((r) => r.id === oldId);
+  const next = rows.find((r) => r.id === newId);
+  if (!old || !next) throw new Error("Produsul nu mai există");
+
+  const names = new Set(next.portions.map((p) => p.name));
+  await db
+    .update(t.ingredients)
+    .set({
+      portions: [...next.portions, ...old.portions.filter((p) => !names.has(p.name))],
+      aisle: next.aisle === "altele" ? old.aisle : next.aisle,
+      toTaste: next.toTaste ?? old.toTaste,
+      staple: next.staple || old.staple,
+      density: next.density !== 1 ? next.density : old.density,
+      inLibrary: true,
+    })
+    .where(eq(t.ingredients.id, newId));
+
+  let changed = 0;
+  for (const r of await db.select({ id: t.recipes.id, steps: t.recipes.steps }).from(t.recipes)) {
+    if (!r.steps.some((s) => s.lines.some((l) => l.ingredientId === oldId))) continue;
+    const steps = r.steps.map((s) => ({ ...s, lines: s.lines.map((l) => (l.ingredientId === oldId ? { ...l, ingredientId: newId } : l)) }));
+    await db.update(t.recipes).set({ steps, updatedAt: new Date() }).where(eq(t.recipes.id, r.id));
+    changed++;
+  }
+  await db.update(t.meals).set({ ingredientId: newId }).where(eq(t.meals.ingredientId, oldId));
+  invalidateIngredientIndex();
+  return changed;
+}
+
+const rowFields = (i: Ingredient): IngredientInput => ({
+  id: i.id,
+  name: i.name,
+  brand: i.brand,
+  per100: i.per100,
+  density: i.density,
+  portions: i.portions,
+  packGrams: i.packGrams,
+  packLabel: i.packLabel,
+  aisle: i.aisle,
+  staple: i.staple,
+  lidl: i.lidl,
+  source: i.source,
+  barcode: i.barcode,
+  toTaste: i.toTaste,
+});

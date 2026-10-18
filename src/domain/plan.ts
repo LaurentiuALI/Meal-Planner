@@ -113,36 +113,37 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
-export type SlotProposal = { pick: string; replace: string[] } | null;
-
 /**
- * Ce rețetă propunem pentru un slot în zilele de gătit:
- * - întâi cele folosite cel mai demult (nefolosite deloc primele), fără cele de săptămâna trecută;
- * - dacă slotul are deja o propunere neatinsă (aceeași rețetă, planificată, fără gramaje fixate),
- *   trecem la următoarea din listă: fiecare „Propune” dă altă combinație;
- * - un slot modificat de tine (mâncat, sărit, gramaje fixate, rețete diferite) rămâne cum e.
+ * Ordinea în care propunem rețetele unui slot: întâi cele folosite cel mai demult (nefolosite deloc
+ * primele), iar cele de săptămâna trecută la coadă. „Alta” din fereastra de propunere merge mai
+ * departe pe lista asta.
  */
-export function proposeForSlot(opts: {
-  recipeIds: string[];
-  lastUsed: Map<string, string>;
-  lastWeek: Set<string>;
-  /** Mesele slotului în zilele de gătit ale săptămânii. */
-  current: Pick<Meal, "id" | "recipeId" | "status" | "pinned">[];
-  seed: string;
-}): SlotProposal {
-  const { recipeIds, lastUsed, lastWeek, current, seed } = opts;
+export function rankForSlot(opts: { recipeIds: string[]; lastUsed: Map<string, string>; lastWeek: Set<string>; seed: string }): string[] {
+  const { recipeIds, lastUsed, lastWeek, seed } = opts;
   const pool = [...recipeIds].sort(
     (a, b) => (lastUsed.get(a) ?? "").localeCompare(lastUsed.get(b) ?? "") || hash(`${seed}:${a}`) - hash(`${seed}:${b}`),
   );
-  const fresh = pool.filter((id) => !lastWeek.has(id));
-  const candidates = fresh.length ? fresh : pool;
-  if (!candidates.length) return null;
-  if (!current.length) return { pick: candidates[0], replace: [] };
+  return [...pool.filter((id) => !lastWeek.has(id)), ...pool.filter((id) => lastWeek.has(id))];
+}
 
+/**
+ * Ce e deja în slot în zilele de gătit: nimic, o propunere neatinsă (aceeași rețetă, planificată,
+ * fără gramaje fixate) sau ceva modificat de tine (mâncat, sărit, gramaje fixate, rețete diferite).
+ */
+export function slotState(current: Pick<Meal, "recipeId" | "status" | "pinned">[]): { recipeId: string | null; locked: boolean } {
+  if (!current.length) return { recipeId: null, locked: false };
   const ids = new Set(current.map((m) => m.recipeId));
   const untouched = ids.size === 1 && current.every((m) => m.recipeId && m.status === "planned" && Object.keys(m.pinned).length === 0);
-  if (!untouched) return null;
-  const at = candidates.indexOf(current[0].recipeId!);
-  const pick = candidates[(at + 1) % candidates.length];
-  return pick === current[0].recipeId ? null : { pick, replace: current.map((m) => m.id) };
+  return { recipeId: current[0].recipeId, locked: !untouched };
+}
+
+/**
+ * Prima rețetă arătată pentru slot: după o propunere neatinsă vine următoarea, ca „Propune” să dea
+ * mereu altceva; un slot modificat de tine rămâne pe ce ai ales (-1 dacă nu e o rețetă din listă).
+ */
+export function firstPick(candidates: string[], state: { recipeId: string | null; locked: boolean }): number {
+  if (!candidates.length) return -1;
+  const at = state.recipeId ? candidates.indexOf(state.recipeId) : -1;
+  if (state.locked) return at;
+  return at < 0 ? 0 : (at + 1) % candidates.length;
 }

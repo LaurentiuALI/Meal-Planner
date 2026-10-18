@@ -72,7 +72,7 @@ Rescriere de la zero, stabilită pe 2026-10-11. Documentul ăsta e sursa de adev
   Sunt configurabile; nu există mic dejun.
 - **Ținte zilnice:** 2300 kcal, 140g proteine, 60g grăsimi, 30g fibre, ~285g carbohidrați (restul).
 - **Ritm:**
-  - Duminică gătești pentru luni-miercuri. Aplicația propune o combinație (1 prânz, 1 cină, 1 gustare) diferită de săptămâna trecută.
+  - Duminică gătești pentru luni-miercuri. „Propune” deschide o fereastră cu prânzul, gustarea și cina; „Alta” schimbă doar slotul respectiv, iar „Pune în plan” scrie combinația. Ordinea: rețetele nefolosite de mult întâi, cele de săptămâna trecută la coadă.
   - Joi-vineri primești doar sugestii, cu prioritate pe resturile din pachete. Weekendul e opțional.
 - **Gătit agregat:** aceeași rețetă pe mai multe mese se gătește o singură dată, cu cantitatea înmulțită.
 - **Solver (determinist):** ajustează ingredientele flexibile, per zi. Ordinea priorităților:
@@ -91,6 +91,8 @@ Rescriere de la zero, stabilită pe 2026-10-11. Documentul ăsta e sursa de adev
 - Se rotunjește la pachete întregi și arată surplusul. Surplusul alimentează sugestiile de joi-vineri.
 - Staples-urile apar la „verifică”.
 - E bifabilă offline. Nu există inventar de cămară.
+- **Scanare la raft:** scanezi produsul pe care îl pui în coș (din butonul de sus sau de pe rândul lui), confirmi valorile de pe etichetă și intră în bibliotecă, verificat și „de la Lidl”. Dacă îl alegi pentru un produs din listă, îl înlocuiește în rețete și în plan, cu aceleași gramaje. Produsele ambalate cu valori neverificate sunt marcate „scanează-l la raft”.
+- Rețetele prestabilite folosesc doar produse din lista zilnică Lidl sau din catalog.
 - **Prețuri (extra):** fișierul zilnic Lidl (`preturiZilniceLidl.xlsb`) plus introducere manuală, cu ultimul preț cunoscut și data lui. Afișează costul listei și al porției.
 
 ## 8. Sesiunea de gătit

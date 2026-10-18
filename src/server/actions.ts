@@ -10,6 +10,8 @@ import {
   getIngredients,
   invalidateIngredientIndex,
   lookupBarcode,
+  replaceIngredient,
+  scanLookup,
   saveIngredient,
   searchIngredients,
   type IngredientInput,
@@ -231,5 +233,29 @@ export async function importBackupAction(json: string) {
     return { ok: true as const };
   } catch (e) {
     return { ok: false as const, error: e instanceof Error ? e.message : "Fișier invalid" };
+  }
+}
+
+// ─── Scanare în magazin ───
+
+export async function scanLookupAction(code: string) {
+  return scanLookup(code);
+}
+
+/**
+ * Produsul scanat, cu valorile confirmate de pe etichetă, intră în bibliotecă ca „de la Lidl” și
+ * verificat. Cu `replaceId`, ia locul acelui produs în rețete și în plan.
+ */
+export async function saveScannedAction(input: IngredientInput, replaceId: string | null) {
+  const parsed = ingredientSchema.safeParse({ ...input, verified: true, lidl: true });
+  if (!parsed.success) return { ok: false as const, error: parsed.error.issues[0].message };
+  try {
+    const id = await saveIngredient(parsed.data as IngredientInput);
+    const recipes = replaceId ? await replaceIngredient(replaceId, id) : 0;
+    revalidatePath("/", "layout");
+    return { ok: true as const, id, recipes };
+  } catch (e) {
+    const msg = String(e);
+    return { ok: false as const, error: msg.includes("UNIQUE") ? "Codul de bare există deja la alt produs" : msg };
   }
 }

@@ -5,11 +5,11 @@ import * as t from "./db/schema";
 import { rowToRecipe } from "./mappers";
 import { getIngredients, addToLibrary } from "./ingredients";
 import { getSettings } from "./settings";
-import { listRecipes } from "./recipes";
-import { addDays, mondayOf, proposeForSlot, weekDates, type Meal, type MealSlot } from "@/domain/plan";
+import { listRecipes, recipeBundle } from "./recipes";
+import { addDays, mondayOf, rankForSlot, slotState, weekDates, type Meal, type MealSlot } from "@/domain/plan";
 import { solve } from "@/domain/solver";
 import { buildShoppingList, suggestFromLeftovers } from "@/domain/shopping";
-import type { Ingredient, Recipe } from "@/domain/types";
+import type { Ingredient, Recipe, SlotId } from "@/domain/types";
 
 const rowToMeal = (r: typeof t.meals.$inferSelect): Meal => ({
   id: r.id,
@@ -141,18 +141,26 @@ export async function clearWeek(monday: string) {
 // ─── Rotația propusă ───
 
 const PREP_DAYS = [0, 1, 2]; // luni–miercuri, gătite duminică
-const SLOTS: { slot: MealSlot; category: Recipe["category"] }[] = [
+const SLOTS: { slot: SlotId; category: Recipe["category"] }[] = [
   { slot: "pranz", category: "pranz" },
   { slot: "gustare", category: "gustare" },
   { slot: "cina", category: "cina" },
 ];
 
+export type SlotProposal = {
+  slot: SlotId;
+  /** Rețetele în ordinea propunerii (vezi `rankForSlot`). */
+  candidates: string[];
+  /** Ce e acum în slot luni–miercuri și dacă l-ai modificat tu. */
+  current: string | null;
+  locked: boolean;
+};
+
 /**
- * Propune luni–miercuri: câte o rețetă pe slot (vezi `proposeForSlot`). Apăsat din nou, trece la
- * următoarea combinație; sloturile modificate de tine rămân neatinse.
+ * Propunerea pentru luni–miercuri, pe sloturi, cu rețetele și ingredientele lor ca fereastra
+ * să poată da „Alta” și să arate macro-urile fără să mai întrebe serverul.
  */
-/** Întoarce câte sloturi a schimbat (0 = toate erau deja modificate de tine). */
-export async function proposeWeek(monday: string): Promise<number> {
+export async function proposalFor(monday: string) {
   const [recipes, history, current] = await Promise.all([
     listRecipes(),
     mealsBetween(addDays(monday, -56), addDays(monday, -1)),
@@ -162,28 +170,36 @@ export async function proposeWeek(monday: string): Promise<number> {
   for (const m of history) if (m.recipeId) lastUsed.set(m.recipeId, m.date);
   const lastWeek = new Set(history.filter((m) => m.date >= addDays(monday, -7)).flatMap((m) => (m.recipeId ? [m.recipeId] : [])));
   const dates = PREP_DAYS.map((d) => addDays(monday, d));
-  let changed = 0;
 
-  for (const { slot, category } of SLOTS) {
-    const inSlot = current.filter((m) => m.slot === slot && dates.includes(m.date));
-    const p = proposeForSlot({
-      recipeIds: recipes.filter((r) => r.category === category).map((r) => r.id),
-      lastUsed,
-      lastWeek,
-      current: inSlot,
-      seed: monday,
-    });
-    if (!p) continue;
-    changed++;
-    if (p.replace.length) await db.delete(t.meals).where(inArray(t.meals.id, p.replace));
-    const kept = inSlot.filter((m) => !p.replace.includes(m.id));
+  const slots: SlotProposal[] = SLOTS.map(({ slot, category }) => {
+    const state = slotState(current.filter((m) => m.slot === slot && dates.includes(m.date)));
+    return {
+      slot,
+      candidates: rankForSlot({ recipeIds: recipes.filter((r) => r.category === category).map((r) => r.id), lastUsed, lastWeek, seed: monday }),
+      current: state.recipeId,
+      locked: state.locked,
+    };
+  });
+  return { slots, recipes: Object.fromEntries(recipes.map((r) => [r.id, r])), ingredients: await recipeBundle(recipes) };
+}
+
+/**
+ * Pune rețetele alese luni–miercuri. Mesele planificate din slot se înlocuiesc; cele bifate
+ * (mâncat/sărit) rămân și ziua lor nu primește alta.
+ */
+export async function applyProposal(monday: string, picks: { slot: SlotId; recipeId: string }[]) {
+  const dates = PREP_DAYS.map((d) => addDays(monday, d));
+  const current = await mealsBetween(dates[0], dates[dates.length - 1]);
+  for (const { slot, recipeId } of picks) {
+    const inSlot = current.filter((m) => m.slot === slot);
+    const replace = inSlot.filter((m) => m.status === "planned").map((m) => m.id);
+    if (replace.length) await db.delete(t.meals).where(inArray(t.meals.id, replace));
     for (const date of dates) {
-      if (kept.some((m) => m.date === date)) continue;
-      await db.insert(t.meals).values({ id: `m-${crypto.randomUUID()}`, date, slot, recipeId: p.pick });
+      if (inSlot.some((m) => m.date === date && m.status !== "planned")) continue;
+      await db.insert(t.meals).values({ id: `m-${crypto.randomUUID()}`, date, slot, recipeId });
     }
   }
   await resolveWeekOf(monday);
-  return changed;
 }
 
 /**

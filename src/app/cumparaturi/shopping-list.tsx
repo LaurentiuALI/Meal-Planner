@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, ClipboardCopy, CloudOff } from "lucide-react";
+import { Check, ClipboardCopy, CloudOff, ScanBarcode } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { AISLES } from "@/domain/aisles";
 import { syncChecksAction } from "@/server/shopping-actions";
 import { refreshPricesAction } from "@/server/actions";
 import { lei } from "@/domain/prices";
+import { ScanProduct, type ScanTarget } from "@/components/scan-product";
 
 export type ListItem = {
   id: string;
@@ -20,6 +21,8 @@ export type ListItem = {
   aisle: string;
   staple: boolean;
   lidl: boolean;
+  /** Valorile vin de pe eticheta produsului, nu dintr-o bază publică. */
+  verified: boolean;
   packGrams: number | null;
   packLabel: string | null;
   needG: number;
@@ -93,16 +96,17 @@ function useChecks(listKey: string, serverChecks: Checks) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listKey]);
 
-  const toggle = (id: string) => {
-    const c = { checked: !checks[id]?.checked, at: Date.now() };
+  const setChecked = (id: string, checked: boolean) => {
+    const c = { checked, at: Date.now() };
     const next = { ...checks, [id]: c };
     setChecks(next);
     write(storeKey, next);
     write(pendingKey, { ...read(pendingKey), [id]: c });
     flush();
   };
+  const toggle = (id: string) => setChecked(id, !checks[id]?.checked);
 
-  return { checks, toggle, offline };
+  return { checks, toggle, setChecked, offline };
 }
 
 export function ShoppingList({
@@ -120,7 +124,13 @@ export function ShoppingList({
 }) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
-  const { checks, toggle, offline } = useChecks(listKey, serverChecks);
+  const { checks, toggle, setChecked, offline } = useChecks(listKey, serverChecks);
+  const [scan, setScan] = useState<{ target: ScanTarget | null } | null>(null);
+  // Întâi ce n-ai pus încă în coș: de acolo vine de obicei produsul scanat.
+  const targets = useMemo(
+    () => [...items].sort((a, b) => Number(!!checks[a.id]?.checked) - Number(!!checks[b.id]?.checked) || a.name.localeCompare(b.name, "ro")).map((i) => ({ id: i.id, name: i.name })),
+    [items, checks],
+  );
   const isChecked = (id: string) => !!checks[id]?.checked;
 
   const groups = useMemo(() => {
@@ -167,10 +177,24 @@ export function ShoppingList({
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
         </div>
-        <Button size="sm" variant="outline" onClick={copy}>
-          <ClipboardCopy /> Copiază
+        <Button size="sm" onClick={() => setScan({ target: null })}>
+          <ScanBarcode /> Scanează
+        </Button>
+        <Button size="icon" variant="outline" className="size-8" onClick={copy} aria-label="Copiază lista">
+          <ClipboardCopy />
         </Button>
       </div>
+
+      <ScanProduct
+        open={!!scan}
+        target={scan?.target ?? null}
+        targets={targets}
+        onClose={() => setScan(null)}
+        onSaved={(id) => {
+          setChecked(id, true);
+          router.refresh();
+        }}
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/60 px-3 py-2 text-sm">
         <span>
@@ -204,7 +228,7 @@ export function ShoppingList({
           <h2 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{g.label}</h2>
           <ul className="divide-y rounded-lg border">
             {[...g.items].sort((a, b) => Number(isChecked(a.id)) - Number(isChecked(b.id))).map((i) => (
-              <Row key={i.id} item={i} checked={isChecked(i.id)} onToggle={() => toggle(i.id)} />
+              <Row key={i.id} item={i} checked={isChecked(i.id)} onToggle={() => toggle(i.id)} onScan={() => setScan({ target: { id: i.id, name: i.name } })} />
             ))}
           </ul>
         </section>
@@ -215,7 +239,7 @@ export function ShoppingList({
           <h2 className="mb-1.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">Verifică dacă mai ai acasă</h2>
           <ul className="divide-y rounded-lg border border-dashed">
             {staples.map((i) => (
-              <Row key={i.id} item={i} checked={isChecked(i.id)} onToggle={() => toggle(i.id)} compact />
+              <Row key={i.id} item={i} checked={isChecked(i.id)} onToggle={() => toggle(i.id)} onScan={() => setScan({ target: { id: i.id, name: i.name } })} compact />
             ))}
           </ul>
         </section>
@@ -224,10 +248,10 @@ export function ShoppingList({
   );
 }
 
-function Row({ item: i, checked, onToggle, compact }: { item: ListItem; checked: boolean; onToggle: () => void; compact?: boolean }) {
+function Row({ item: i, checked, onToggle, onScan, compact }: { item: ListItem; checked: boolean; onToggle: () => void; onScan: () => void; compact?: boolean }) {
   return (
-    <li>
-      <button onClick={onToggle} className={cn("flex w-full items-start gap-3 px-3 text-left", compact ? "py-2" : "py-3")}>
+    <li className="flex items-stretch">
+      <button onClick={onToggle} className={cn("flex min-w-0 flex-1 items-start gap-3 pl-3 text-left", compact ? "py-2" : "py-3")}>
         <span
           className={cn(
             "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
@@ -251,7 +275,15 @@ function Row({ item: i, checked, onToggle, compact }: { item: ListItem; checked:
               {i.cost != null && ` · ~${lei(i.cost)}`} · {i.usedIn.join(", ")}
             </span>
           )}
+          {!compact && !i.verified && !checked && <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-500">valori aproximative: scanează-l la raft</span>}
         </span>
+      </button>
+      <button
+        onClick={onScan}
+        aria-label={`Scanează ${i.name}`}
+        className={cn("flex w-12 shrink-0 items-start justify-center pt-3 text-muted-foreground hover:text-foreground", compact && "pt-2", !i.verified && !compact && "text-amber-600")}
+      >
+        <ScanBarcode className="size-5" />
       </button>
     </li>
   );

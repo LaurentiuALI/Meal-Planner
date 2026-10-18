@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ export function BarcodeScanner({ open, onOpenChange, onCode }: { open: boolean; 
   const video = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState("");
+  // Camera pornește o singură dată pe deschidere, chiar dacă părintele dă callback-uri noi la fiecare randare.
+  const handlers = useRef({ onCode, onOpenChange });
+  useLayoutEffect(() => {
+    handlers.current = { onCode, onOpenChange };
+  });
 
   const [wasOpen, setWasOpen] = useState(open);
   if (open !== wasOpen) {
@@ -39,8 +44,8 @@ export function BarcodeScanner({ open, onOpenChange, onCode }: { open: boolean; 
             if (!result) return;
             navigator.vibrate?.(50);
             controls.stop();
-            onCode(result.getText());
-            onOpenChange(false);
+            handlers.current.onCode(result.getText());
+            handlers.current.onOpenChange(false);
           },
         );
         stop = () => controls.stop();
@@ -53,7 +58,7 @@ export function BarcodeScanner({ open, onOpenChange, onCode }: { open: boolean; 
       cancelled = true;
       stop?.();
     };
-  }, [open, onCode, onOpenChange]);
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

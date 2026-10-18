@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/macros";
 import { RangePicker } from "@/components/range-picker";
 import { bundleFor, mealsBetween } from "@/server/plan";
 import { getChecks } from "@/server/shopping";
+import { unverifiedAmong } from "@/server/ingredients";
 import { lidlPricesAge, pricesFor, refreshLidlPricesIfStale } from "@/server/prices";
 import { itemCost } from "@/domain/prices";
 import { buildShoppingList } from "@/domain/shopping";
@@ -20,7 +21,8 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
   const bundle = await bundleFor(await mealsBetween(range.from, range.to));
   refreshLidlPricesIfStale();
   const list = buildShoppingList(bundle.meals, (id) => bundle.recipes[id], (id) => bundle.ingredients[id]);
-  const [checks, prices, pricesAt] = await Promise.all([getChecks(listKey), pricesFor(list.map((i) => i.ingredient.id)), lidlPricesAge()]);
+  const ids = list.map((i) => i.ingredient.id);
+  const [checks, prices, pricesAt, unverified] = await Promise.all([getChecks(listKey), pricesFor(ids), lidlPricesAge(), unverifiedAmong(ids)]);
   const items: ListItem[] = list.map((i) => ({
     id: i.ingredient.id,
     name: i.ingredient.name,
@@ -28,6 +30,8 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
     aisle: i.ingredient.aisle,
     staple: i.ingredient.staple,
     lidl: i.ingredient.lidl,
+    // Condimentele și uleiul nu se cântăresc, iar fructele și legumele vrac n-au etichetă: valorile generice ajung.
+    verified: !unverified.has(i.ingredient.id) || !!i.ingredient.toTaste || i.ingredient.aisle === "fructe-legume",
     packGrams: i.ingredient.packGrams,
     packLabel: i.ingredient.packLabel,
     needG: i.needG,
