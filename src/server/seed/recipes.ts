@@ -303,4 +303,158 @@ export const PRESET_RECIPES: SeedRecipe[] = [
       },
     ],
   },
+
+  // ───────────── Adăugate 2026-10-18 (tot din lista Lidl) ─────────────
+  {
+    name: "Pui teriyaki cu orez și legume chinezești",
+    category: "pranz",
+    freezes: true,
+    keepsDays: 4,
+    notes: "Legumele: Freshona mix chinezesc congelat (750 g).",
+    steps: [
+      { action: "taie-carne", text: "Taie pieptul de pui cuburi.", lines: [["Piept de pui", 200, "g", [150, 260]]] },
+      { action: "tigaie-pui", text: "Rumenește puiul în ulei.", lines: [["Ulei de floarea-soarelui", 6, "g"]] },
+      { action: "soteaza-legume", text: "Adaugă legumele congelate și sotează-le cu puiul.", lines: [["Mix de legume congelate", 250, "g"]] },
+      {
+        action: "fierbe-sos",
+        text: "Stinge cu sosul de soia, mierea, usturoiul și ghimbirul; lasă să scadă până se lipește sosul.",
+        minutes: 4,
+        lines: [["Sos de soia", 20, "g"], ["Miere", 12, "g"], ["Usturoi", 1, "cățel"], ["Ghimbir praf", 1, "g"]],
+      },
+      { action: "fierbe-orez", text: "Fierbe orezul.", lines: [["Orez alb bob lung", 80, "g", [50, 140]]] },
+    ],
+  },
+  {
+    name: "Paste bolognese cu vită și legume",
+    category: "pranz",
+    freezes: true,
+    keepsDays: 4,
+    notes: "Sosul se congelează separat foarte bine; pastele le fierbi proaspete.",
+    steps: [
+      { action: "taie-legume", text: "Toacă mărunt ceapa, morcovul și ciupercile.", lines: [["Ceapă", 60, "g"], ["Morcov", 60, "g"], ["Ciuperci champignon", 80, "g"]] },
+      { action: "caleste-ceapa", text: "Călește legumele în ulei.", lines: [["Ulei de măsline", 5, "g"]] },
+      { action: "rumeneste-tocata", text: "Adaugă carnea și rumenește-o.", lines: [["Carne tocată de vită 90/10", 170, "g", [130, 220]]] },
+      {
+        action: "fierbe-sos",
+        text: "Adaugă passata, pasta de tomate și condimentele; fierbe la foc mic.",
+        lines: [["Passata / sos de roșii", 200, "g"], ["Pastă de tomate", 15, "g"], ["Oregano uscat", 1, "g"], ["Sare", 2, "g"], ["Piper negru", 0.5, "g"]],
+      },
+      { action: "fierbe-paste", text: "Fierbe pastele al dente.", lines: [["Paste", 90, "g", [60, 140]]] },
+      { action: "asambleaza", text: "Parmezan deasupra, în caserole.", lines: [["Parmezan ras", 10, "g"]] },
+    ],
+  },
+  {
+    name: "Tocăniță de pui cu ciuperci și mazăre, cu orez",
+    category: "pranz",
+    freezes: true,
+    keepsDays: 4,
+    steps: [
+      { action: "taie-carne", text: "Taie pulpele cuburi.", lines: [["Pulpe de pui dezosate, fără piele", 200, "g", [160, 260]]] },
+      { action: "taie-legume", text: "Toacă ceapa și taie ciupercile felii.", lines: [["Ceapă", 60, "g"], ["Ciuperci champignon", 150, "g"]] },
+      { action: "tigaie-pui", text: "Rumenește puiul cu ceapa.", lines: [["Ulei de floarea-soarelui", 6, "g"]] },
+      {
+        action: "fierbe-sos",
+        text: "Adaugă ciupercile, mazărea, pasta de tomate, condimentele și un pahar de apă; fierbe la foc mic.",
+        lines: [["Mazăre verde", 100, "g"], ["Pastă de tomate", 15, "g"], ["Boia dulce", 2, "g"], ["Cimbru uscat", 1, "g"], ["Sare", 2, "g"]],
+      },
+      { action: "fierbe-orez", text: "Fierbe orezul.", lines: [["Orez alb bob lung", 70, "g", [40, 130]]] },
+    ],
+  },
+  {
+    name: "Ardei umpluți cu pui și orez",
+    category: "cina",
+    freezes: true,
+    keepsDays: 4,
+    notes: "Orezul intră crud și fierbe în cuptor, în jena mare acoperită.",
+    steps: [
+      { action: "taie-legume", text: "Taie capacele ardeilor și scoate semințele; toacă ceapa și morcovul.", lines: [["Ardei gras roșu", 2, "bucată"], ["Ceapă", 50, "g"], ["Morcov", 40, "g"]] },
+      {
+        action: "amesteca",
+        text: "Amestecă carnea cu orezul spălat, ceapa, morcovul, mărarul și condimentele; umple ardeii.",
+        lines: [["Carne tocată de pui", 180, "g", [140, 230]], ["Orez alb bob lung", 40, "g", [25, 70]], ["Mărar proaspăt", 5, "g"], ["Sare", 2, "g"], ["Piper negru", 0.5, "g"]],
+      },
+      {
+        action: "cuptor-gratinat",
+        text: "Ardeii în jenă, passata și 200 ml apă peste ei; acoperă și lasă la cuptor.",
+        minutes: 60,
+        lines: [["Passata / sos de roșii", 200, "g"]],
+      },
+      { action: "asambleaza", text: "Cu iaurt deasupra.", lines: [["off:4056489683759", 60, "g"]] },
+    ],
+  },
+  {
+    name: "Cod cu cartofi la cuptor și salată de varză",
+    category: "cina",
+    keepsDays: 2,
+    notes: "Codul de Alaska congelat (Ocean Sea) se dezgheață peste noapte în frigider. Peștele se ține 2 zile.",
+    steps: [
+      { action: "curata-cartofi", text: "Taie cartofii felii groase.", lines: [["Cartofi albi", 400, "g", [250, 600]]] },
+      { action: "cuptor-cartofi", text: "Cartofii la cuptor, cu ulei, boia și sare.", lines: [["Ulei de măsline", 8, "g"], ["Boia dulce", 2, "g"], ["Sare", 1, "g"]] },
+      { action: "af-peste", text: "Codul la airfryer, cu sare și lămâie.", lines: [["Cod de Alaska (pollock)", 220, "g", [160, 280]], ["Lămâie", 20, "g"], ["Sare", 1, "g"]] },
+      { action: "taie-legume", text: "Taie varza fideluță, frec-o cu sare, oțet, ulei și mărar.", lines: [["Varză albă", 150, "g"], ["Oțet de mere", 10, "g"], ["Ulei de floarea-soarelui", 5, "g"], ["Mărar proaspăt", 5, "g"]] },
+    ],
+  },
+  {
+    name: "Ciulama de pui cu ciuperci și mămăligă",
+    category: "cina",
+    keepsDays: 3,
+    notes: "Variantă mai slabă: sos din lapte îngroșat cu puțină făină, fără smântână.",
+    steps: [
+      { action: "taie-carne", text: "Taie pulpele cuburi.", lines: [["Pulpe de pui dezosate, fără piele", 220, "g", [170, 280]]] },
+      { action: "taie-legume", text: "Toacă ceapa și taie ciupercile.", lines: [["Ceapă", 60, "g"], ["Ciuperci champignon", 200, "g"]] },
+      { action: "tigaie-pui", text: "Rumenește puiul cu ceapa și ciupercile.", lines: [["Unt", 6, "g"]] },
+      {
+        action: "fierbe-sos",
+        text: "Presară făina, amestecă, apoi toarnă laptele treptat; fierbe până se îngroașă.",
+        minutes: 10,
+        lines: [["Făină albă", 10, "g"], ["Lapte semidegresat 2%", 200, "g"], ["Usturoi granulat", 1, "g"], ["Sare", 2, "g"], ["Piper negru", 0.5, "g"]],
+      },
+      { action: "fierbe-cereale", text: "Mămăliga: mălaiul în apă clocotită cu sare, amestecă până se îngroașă.", minutes: 12, lines: [["Mălai", 70, "g", [40, 110]]] },
+    ],
+  },
+  {
+    name: "Brânză de vaci cu afine, ovăz și miere",
+    category: "gustare",
+    keepsDays: 3,
+    notes: "Fără gătit; se face în 2 minute direct în caserolă.",
+    steps: [
+      {
+        action: "asambleaza",
+        text: "Brânza în caserolă, deasupra afinele, ovăzul și mierea.",
+        lines: [["Brânză de vaci 2%", 200, "g", [150, 280]], ["legacy:Afine de Cultura camara noastra", 80, "g"], ["off:4056489195917", 25, "g", [0, 50]], ["Miere", 10, "g"]],
+      },
+    ],
+  },
+  {
+    name: "Vafe proteice la sandwich maker",
+    category: "gustare",
+    keepsDays: 3,
+    notes: "Pe plăcile de vafe. Se fac duminică pentru tot blocul și se încălzesc 30 de secunde la microunde.",
+    steps: [
+      {
+        action: "blender",
+        text: "Mixează ovăzul, oul, albușurile, brânza, banana și praful de copt.",
+        lines: [["off:4056489195917", 50, "g", [30, 80]], ["Ou", 1, "bucată"], ["Albuș de ou", 2, "bucată"], ["Brânză de vaci 2%", 60, "g"], ["Banană", 50, "g"], ["Praf de copt", 2, "g"]],
+      },
+      { action: "sandwich", text: "Coace vafele în sandwich maker până se rumenesc." },
+      { action: "asambleaza", text: "Cu iaurt deasupra.", lines: [["off:4056489683759", 80, "g"]] },
+    ],
+  },
+  {
+    name: "Ouă în sos de roșii cu năut și feta",
+    category: "rapid",
+    keepsDays: 1,
+    notes: "Shakshuka simplă, 20 de minute, o singură tigaie.",
+    steps: [
+      { action: "taie-legume", text: "Taie ceapa și ardeiul.", lines: [["Ceapă", 50, "g"], ["Ardei gras roșu", 100, "g"]] },
+      { action: "soteaza-legume", text: "Sotează ceapa și ardeiul în ulei.", lines: [["Ulei de măsline", 6, "g"]] },
+      {
+        action: "fierbe-sos",
+        text: "Adaugă passata, năutul și condimentele; fă 3 gropițe, sparge ouăle și acoperă până se întăresc albușurile.",
+        minutes: 12,
+        lines: [["Passata / sos de roșii", 200, "g"], ["Năut conservă (scurs)", 100, "g"], ["Boia dulce", 2, "g"], ["Sare", 1, "g"], ["Ou", 3, "bucată"]],
+      },
+      { action: "asambleaza", text: "Feta sfărâmată deasupra; cu pâine integrală.", lines: [["Brânză feta", 30, "g"], ["off:4056489165149", 2, "felie", [0, 120]]] },
+    ],
+  },
 ];
